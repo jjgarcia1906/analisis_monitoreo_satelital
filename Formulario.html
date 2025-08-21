@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Supervisión</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .form-group input[readonly] { background-color: #e9ecef; cursor: not-allowed; }
+        .full-width { grid-column: 1 / -1; }
+        .search-section { display: flex; gap: 10px; align-items: flex-end; }
+        button { padding: 10px 20px; background-color: #0056b3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button.primary { background-color: #007bff; }
+        button.secondary { background-color: #28a745; }
+        button:hover { opacity: 0.9; }
+        #statusMessage { text-align: center; margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Registro de Supervisión Forestal</h2>
+        
+        <form id="supervisionForm">
+            <fieldset class="full-width">
+                <legend>1. Buscar Contrato</legend>
+                <div class="form-group search-section">
+                    <div style="flex-grow: 1;">
+                        <label for="num_contrato_search">Número de Contrato:</label>
+                        <input type="text" id="num_contrato_search" required>
+                    </div>
+                    <button type="button" class="primary" onclick="buscarContrato()">Buscar</button>
+                </div>
+            </fieldset>
+
+            <fieldset class="full-width" id="infoContrato" style="display:none;">
+                <legend>2. Información del Contrato (Automático)</legend>
+                <div class="grid-container">
+                    <div class="form-group">
+                        <label>Departamento:</label>
+                        <input type="text" id="departamento" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Provincia:</label>
+                        <input type="text" id="provincia" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Distrito:</label>
+                        <input type="text" id="distrito" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Titular del Contrato:</label>
+                        <input type="text" id="titular" readonly>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="full-width" id="infoSupervision" style="display:none;">
+                <legend>3. Llenar Datos de Supervisión</legend>
+                <div class="grid-container">
+                    <div class="form-group">
+                        <label for="doc_presentado_ugffs">Doc. Presentado UGFFS:</label>
+                        <input type="text" id="doc_presentado_ugffs">
+                    </div>
+                    <div class="form-group">
+                        <label for="nro_gtf">Nro. GTF:</label>
+                        <input type="text" id="nro_gtf">
+                    </div>
+                    <div class="form-group">
+                        <label for="nro_list_troza">Nro. Lista Troza:</label>
+                        <input type="text" id="nro_list_troza">
+                    </div>
+                    <div class="form-group">
+                        <label for="fech_tala_lo_th">Fecha de Tala:</label>
+                        <input type="date" id="fech_tala_lo_th">
+                    </div>
+                    <div class="form-group">
+                        <label for="resultado_analisis">Resultado del Análisis:</label>
+                        <input type="text" id="resultado_analisis">
+                    </div>
+                    <div class="form-group">
+                        <label for="doc_generado">Doc. Generado:</label>
+                        <input type="text" id="doc_generado">
+                    </div>
+                    <div class="form-group">
+                        <label for="link_reporte">Link Reporte:</label>
+                        <input type="url" id="link_reporte">
+                    </div>
+                    <div class="form-group">
+                        <label for="link_gtf">Link GTF (gerforcloud):</label>
+                        <input type="url" id="link_gtf">
+                    </div>
+                    <div class="form-group">
+                        <label for="remitido_osinfor">Remitido a OSINFOR:</label>
+                        <select id="remitido_osinfor">
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fecha_ingreso_osinfor">Fecha Ingreso a Campo OSINFOR:</label>
+                        <input type="date" id="fecha_ingreso_osinfor">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="n_informe_osinfor">Nº Informe Supervisión OSINFOR:</label>
+                        <input type="text" id="n_informe_osinfor">
+                    </div>
+                     <div class="form-group full-width">
+                        <label for="observacion">Observación:</label>
+                        <textarea id="observacion" rows="3"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="hallazgos_osinfor">Hallazgos OSINFOR:</label>
+                        <textarea id="hallazgos_osinfor" rows="3"></textarea>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <div class="form-group full-width" style="text-align: center; margin-top: 20px;">
+                <button type="submit" class="secondary">Guardar Supervisión</button>
+            </div>
+        </form>
+        <p id="statusMessage"></p>
+    </div>
+
+    <script>
+    async function buscarContrato() {
+        const numContrato = document.getElementById('num_contrato_search').value;
+        const statusMessage = document.getElementById('statusMessage');
+
+        if (!numContrato) {
+            alert('Por favor, ingrese un número de contrato.');
+            return;
+        }
+
+        try {
+            statusMessage.textContent = `Buscando contrato: ${numContrato}...`;
+            statusMessage.style.color = 'blue';
+
+            // Llamada REAL al backend para buscar
+            const response = await fetch(`http://localhost:3000/api/contrato/${numContrato}`);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Contrato no encontrado.');
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                const contrato = result.data;
+                
+                // Autocompletamos el formulario con los datos REALES
+                // ¡IMPORTANTE! Asegúrate de que los nombres (ej: contrato.departamen)
+                // coincidan con los nombres de las columnas que seleccionaste en la query del backend.
+                document.getElementById('departamento').value = contrato.departamen || '';
+                document.getElementById('provincia').value = contrato.provincia || '';
+                document.getElementById('distrito').value = contrato.distrito || '';
+                document.getElementById('titular').value = contrato.titular || '';
+                
+                // Mostramos las secciones ocultas
+                document.getElementById('infoContrato').style.display = 'block';
+                document.getElementById('infoSupervision').style.display = 'block';
+                statusMessage.textContent = 'Contrato encontrado. Por favor, complete los datos.';
+                statusMessage.style.color = 'green';
+            }
+        } catch (error) {
+            console.error('Error en la búsqueda:', error);
+            statusMessage.textContent = `Error: ${error.message}`;
+            statusMessage.style.color = 'red';
+            document.getElementById('infoContrato').style.display = 'none';
+            document.getElementById('infoSupervision').style.display = 'none';
+        }
+    }
+
+    // Evento para GUARDAR el formulario
+    document.getElementById('supervisionForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Recolectamos TODOS los datos del formulario
+        const formData = {
+            num_contrato: document.getElementById('num_contrato_search').value,
+            doc_presentado_ugffs: document.getElementById('doc_presentado_ugffs').value,
+            nro_gtf: document.getElementById('nro_gtf').value,
+            nro_list_troza: document.getElementById('nro_list_troza').value,
+            fech_tala_lo_th: document.getElementById('fech_tala_lo_th').value || null,
+            resultado_analisis: document.getElementById('resultado_analisis').value,
+            doc_generado: document.getElementById('doc_generado').value,
+            observacion: document.getElementById('observacion').value,
+            link_reporte: document.getElementById('link_reporte').value,
+            link_gtf_gerforcloud: document.getElementById('link_gtf').value,
+            remitido_osinfor: document.getElementById('remitido_osinfor').value,
+            fecha_ingreso_campo_osinfor: document.getElementById('fecha_ingreso_osinfor').value || null,
+            n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value,
+            hallazgos_osinfor: document.getElementById('hallazgos_osinfor').value
+        };
+
+        try {
+            statusMessage.textContent = 'Guardando...';
+            statusMessage.style.color = 'blue';
+
+            // Llamada REAL al backend para guardar
+            const response = await fetch('http://localhost:3000/api/supervision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error al guardar.');
+            }
+            
+            const result = await response.json();
+
+            if (result.success) {
+                statusMessage.textContent = result.message;
+                statusMessage.style.color = 'green';
+                // Opcional: Limpiar el formulario después de guardar
+                document.getElementById('supervisionForm').reset();
+                document.getElementById('infoContrato').style.display = 'none';
+                document.getElementById('infoSupervision').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error al guardar:', error);
+            statusMessage.textContent = `Error: ${error.message}`;
+            statusMessage.style.color = 'red';
+        }
+    });
+</script>
+</body>
+</html>

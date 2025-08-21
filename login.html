@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio de Sesión</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 300px; }
+        h2 { text-align: center; color: #333; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 5px; color: #555; }
+        .input-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background-color: #0056b3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #004494; }
+        #message { text-align: center; margin-top: 20px; font-weight: bold; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h2>Iniciar Sesión</h2>
+        <form id="loginForm">
+            <div class="input-group">
+                <label for="username">Usuario:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Ingresar</button>
+        </form>
+        <p id="message"></p>
+    </div>
+
+    <script>
+        // 1. Seleccionamos los elementos del HTML con los que vamos a trabajar.
+        const form = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const messageElement = document.getElementById('message');
+
+        // 2. Añadimos un "escuchador" para el evento de envío del formulario.
+        form.addEventListener('submit', function(event) {
+            // Prevenimos el comportamiento por defecto del formulario (que es recargar la página).
+            event.preventDefault(); 
+
+            // 3. Obtenemos los valores escritos por el usuario.
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+
+            // 4. Usamos la API fetch para enviar los datos al backend.
+            fetch('http://localhost:3000/login', {
+                method: 'POST', // Usamos el método POST porque estamos enviando datos.
+                headers: {
+                    'Content-Type': 'application/json' // Le decimos al servidor que enviaremos datos en formato JSON.
+                },
+                body: JSON.stringify({ // Convertimos nuestro objeto de JavaScript a una cadena de texto JSON.
+                    username: username,
+                    password: password
+                })
+            })
+            .then(response => response.json()) // Esperamos la respuesta del servidor y la convertimos de JSON a un objeto.
+            .then(data => {
+                // 5. Manejamos la respuesta del servidor.
+if (data.success) {
+    // Mostramos un mensaje de éxito por un momento
+    messageElement.textContent = '¡Éxito! Redirigiendo...';
+    messageElement.className = 'success';
+
+    // (BONUS) Guardamos el nombre de usuario en el almacenamiento local del navegador
+    // para poder mostrarlo en el dashboard.
+    localStorage.setItem('username', username);
+
+    // Redirigimos al dashboard después de 1 segundo para que el usuario vea el mensaje.
+    setTimeout(() => {
+        window.location.href = 'dashboard.html';
+    }, 1000); // 1000 milisegundos = 1 segundo
+
+} else {
+    messageElement.textContent = data.message;
+    messageElement.className = 'error'; // Aplicamos el estilo de error (rojo).
+}
+            })
+            .catch(error => {
+                // 6. Manejamos cualquier error de red (ej: si el servidor no está corriendo).
+                console.error('Error:', error);
+                messageElement.textContent = 'Error de conexión con el servidor.';
+                messageElement.className = 'error';
+            });
+        });
+    </script>
+    </body>
+</html>
