@@ -90,6 +90,7 @@
     </div>
 
     <script>
+    // ... (el código de inicialización del mapa y userInfo no cambia) ...
     const loggedInUser = localStorage.getItem('username');
     if (loggedInUser) { document.getElementById('userInfo').textContent = `Bienvenido, ${loggedInUser}`; } else { alert("Acceso denegado."); window.location.href = 'index.html'; }
     
@@ -107,8 +108,6 @@
             statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
             if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
             const encodedContrato = encodeURIComponent(numContrato);
-            
-            // ▼▼▼ CORRECCIÓN 1 AQUÍ ▼▼▼
             const response = await fetch(`/api/contrato/${encodedContrato}`);
             
             if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Error en la búsqueda.'); }
@@ -117,7 +116,7 @@
                 const contrato = result.data;
                 document.getElementById('titular').value = contrato.nomtit || '';
                 document.getElementById('modalidad').value = contrato.nomobj || ''; 
-                document.getElementById('resolucion').value = contrato.resapr || '';
+                // Ya no necesitamos el campo oculto 'resolucion'
 
                 if (contrato.geojson) {
                     poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
@@ -140,11 +139,9 @@
         event.preventDefault();
         const statusMessage = document.getElementById('statusMessage');
         
+        // El formulario ahora es más simple, solo envía los datos de la supervisión
         const formData = {
             num_contrato: document.getElementById('num_contrato_search').value,
-            nomtit: document.getElementById('titular').value,
-            resapr: document.getElementById('resolucion').value,
-            // (Asegúrate de que los IDs de los siguientes elementos coincidan con tu HTML)
             nombre_especialista: document.getElementById('nombre_especialista').value,
             numero_parcela: document.getElementById('numero_parcela').value,
             doc_presentado_ugffs: document.getElementById('doc_presentado_ugffs').value,
@@ -155,17 +152,16 @@
             doc_generado: document.getElementById('doc_generado').value,
             observacion: document.getElementById('observacion').value,
             link_reporte: document.getElementById('link_reporte').value,
-            link_gtf_gerforcloud: document.getElementById('link_gtf').value, // ID corregido de 'link_gtf'
+            link_gtf_gerforcloud: document.getElementById('link_gtf').value,
             remitido_osinfor: document.getElementById('remitido_osinfor').value,
-            fecha_ingreso_campo_osinfor: document.getElementById('fecha_ingreso_osinfor').value || null, // ID corregido
-            n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value, // ID corregido
+            fecha_ingreso_campo_osinfor: document.getElementById('fecha_ingreso_osinfor').value || null,
+            n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value,
+
             hallazgos_osinfor: document.getElementById('hallazgos_osinfor').value
         };
 
         try {
             statusMessage.textContent = 'Guardando...'; statusMessage.style.color = 'blue';
-
-            // ▼▼▼ CORRECCIÓN 2 AQUÍ ▼▼▼
             const response = await fetch('/api/supervision', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
