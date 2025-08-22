@@ -53,7 +53,8 @@
             const password = passwordInput.value;
 
             // 4. Usamos la API fetch para enviar los datos al backend.
-            fetch('http://localhost:3000/login', {
+            // ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
+            fetch('/login', {
                 method: 'POST', // Usamos el método POST porque estamos enviando datos.
                 headers: {
                     'Content-Type': 'application/json' // Le decimos al servidor que enviaremos datos en formato JSON.
@@ -66,24 +67,24 @@
             .then(response => response.json()) // Esperamos la respuesta del servidor y la convertimos de JSON a un objeto.
             .then(data => {
                 // 5. Manejamos la respuesta del servidor.
-if (data.success) {
-    // Mostramos un mensaje de éxito por un momento
-    messageElement.textContent = '¡Éxito! Redirigiendo...';
-    messageElement.className = 'success';
+                if (data.success) {
+                    // Mostramos un mensaje de éxito por un momento
+                    messageElement.textContent = '¡Éxito! Redirigiendo...';
+                    messageElement.className = 'success';
 
-    // (BONUS) Guardamos el nombre de usuario en el almacenamiento local del navegador
-    // para poder mostrarlo en el dashboard.
-    localStorage.setItem('username', username);
+                    // (BONUS) Guardamos el nombre de usuario en el almacenamiento local del navegador
+                    // para poder mostrarlo en el dashboard.
+                    localStorage.setItem('username', username);
 
-    // Redirigimos al dashboard después de 1 segundo para que el usuario vea el mensaje.
-    setTimeout(() => {
-        window.location.href = 'dashboard.html';
-    }, 1000); // 1000 milisegundos = 1 segundo
+                    // Redirigimos al dashboard después de 1 segundo para que el usuario vea el mensaje.
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000); // 1000 milisegundos = 1 segundo
 
-} else {
-    messageElement.textContent = data.message;
-    messageElement.className = 'error'; // Aplicamos el estilo de error (rojo).
-}
+                } else {
+                    messageElement.textContent = data.message;
+                    messageElement.className = 'error'; // Aplicamos el estilo de error (rojo).
+                }
             })
             .catch(error => {
                 // 6. Manejamos cualquier error de red (ej: si el servidor no está corriendo).
