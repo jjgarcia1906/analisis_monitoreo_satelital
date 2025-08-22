@@ -7,18 +7,82 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f4f4f9; }
-        .header { background-color: #004d40; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        /* --- Estructura General --- */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            background-color: #f4f4f9; 
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden; /* Evita barras de scroll innecesarias */
+        }
+
+        /* --- Encabezado Superior --- */
+        .header {
+            background-color: #004d40;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            flex-shrink: 0; /* Evita que el header se encoja */
+        }
         .header h1 { margin: 0; font-size: 1.5em; }
-        .main-container { display: flex; padding: 20px; gap: 20px; align-items: flex-start; }
-        .form-container { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-y: auto; max-height: 85vh;}
-        .map-container { flex: 1; height: 85vh; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        #mapa { height: 100%; width: 100%; border-radius: 8px;}
-        h2 { text-align: center; color: #333; margin-top:0; }
+        .user-info-container {
+            display: flex;
+            align-items: center;
+            gap: 20px; /* Aumenta el espacio */
+        }
+        #logoutButton {
+            background-color: #dc3545;
+            padding: 8px 15px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+        #logoutButton:hover { opacity: 0.85; }
+
+        /* --- Contenedor Principal --- */
+        .main-container {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            align-items: stretch; /* Estira los hijos para que tengan la misma altura */
+            flex-grow: 1; /* Permite que el contenedor crezca */
+            overflow: hidden; /* Evita el desbordamiento */
+        }
+        .form-container {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Scroll solo si es necesario */
+        }
+        .map-container {
+            flex: 1;
+            display: flex; /* Añadido para que el mapa se ajuste bien */
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        #mapa { height: 100%; width: 100%; border-radius: 8px; }
+
+        /* --- Estilos del Formulario --- */
+        h2 { text-align: center; color: #333; margin-top: 0; }
         .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Importante para que el padding no afecte el ancho */
+        }
         .form-group input[readonly] { background-color: #e9ecef; }
         .full-width { grid-column: 1 / -1; }
         .search-section { display: flex; gap: 10px; align-items: flex-end; }
@@ -32,10 +96,11 @@
 <body>
 
     <div class="header">
-    <h1>Dashboard de Supervisión Forestal</h1>
-    <div id="userInfoContainer" style="display: flex; align-items: center; gap: 15px;">
-        <div id="userInfo"></div>
-        <button id="logoutButton" style="background-color: #dc3545; padding: 8px 12px; font-size: 14px;">Cerrar Sesión</button>
+        <h1>Dashboard de Supervisión Forestal</h1>
+        <div class="user-info-container">
+            <span id="userInfo"></span>
+            <button id="logoutButton">Cerrar Sesión</button>
+        </div>
     </div>
 
     <div class="main-container">
@@ -52,14 +117,15 @@
                         <button type="button" class="primary" onclick="buscarContrato()">Buscar</button>
                     </div>
                 </fieldset>
+                
                 <fieldset class="full-width" id="infoContrato" style="display:none;">
                     <legend>2. Información del Contrato</legend>
                     <div class="grid-container">
                         <div class="form-group"><label>Titular:</label><input type="text" id="titular" readonly></div>
                         <div class="form-group"><label>Modalidad:</label><input type="text" id="modalidad" readonly></div>
-                        <input type="hidden" id="resolucion">
                     </div>
                 </fieldset>
+                
                 <fieldset class="full-width" id="infoSupervision" style="display:none;">
                     <legend>3. Llenar Datos de Supervisión</legend>
                     <div class="grid-container">
@@ -80,6 +146,7 @@
                         <div class="form-group full-width"><label for="hallazgos_osinfor">Hallazgos OSINFOR:</label><textarea id="hallazgos_osinfor" rows="3"></textarea></div>
                     </div>
                 </fieldset>
+
                 <div class="form-group full-width" style="text-align: center; margin-top: 20px;">
                     <button type="submit" class="secondary">Guardar Supervisión</button>
                 </div>
@@ -92,120 +159,138 @@
     </div>
 
     <script>
-    // ... (el código de inicialización del mapa y userInfo no cambia) ...
-    const loggedInUser = localStorage.getItem('username');
-    if (loggedInUser) { document.getElementById('userInfo').textContent = `Bienvenido, ${loggedInUser}`; } else { alert("Acceso denegado."); window.location.href = 'index.html'; }
-    
-    const mapa = L.map('mapa').setView([-5.8, -75.0], 6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(mapa);
-    
-    let poligonoContratoLayer = null;
-    
-    // Lógica para el botón de cerrar sesión
-const logoutButton = document.getElementById('logoutButton');
-
-logoutButton.addEventListener('click', async () => {
-    try {
-        const response = await fetch('/logout', { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-            // Si el servidor cerró la sesión, limpiamos los datos del navegador
-            localStorage.removeItem('username'); 
-            // Y redirigimos a la página de login
-            window.location.href = '/'; 
+        const loggedInUser = localStorage.getItem('username');
+        if (loggedInUser) {
+            document.getElementById('userInfo').textContent = `Bienvenido, ${loggedInUser}`;
         } else {
-            alert('Error al cerrar sesión.');
+            // Si no hay usuario, redirigir al login (seguridad del lado del cliente)
+            window.location.href = '/'; 
         }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error de conexión al cerrar sesión.');
-    }
-});
-
-    async function buscarContrato() {
-        const numContrato = document.getElementById('num_contrato_search').value;
-        const statusMessage = document.getElementById('statusMessage');
-        if (!numContrato) { alert('Ingrese un número de contrato.'); return; }
-
-        try {
-            statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
-            if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
-            const encodedContrato = encodeURIComponent(numContrato);
-            const response = await fetch(`/api/contrato/${encodedContrato}`);
-            
-            if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Error en la búsqueda.'); }
-            const result = await response.json();
-            if (result.success) {
-                const contrato = result.data;
-                document.getElementById('titular').value = contrato.nomtit || '';
-                document.getElementById('modalidad').value = contrato.nomobj || ''; 
-                // Ya no necesitamos el campo oculto 'resolucion'
-
-                if (contrato.geojson) {
-                    poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
-                    mapa.fitBounds(poligonoContratoLayer.getBounds());
-                }
-                
-                document.getElementById('infoContrato').style.display = 'block';
-                document.getElementById('infoSupervision').style.display = 'block';
-                statusMessage.textContent = 'Contrato encontrado. Llene los datos.'; statusMessage.style.color = 'green';
-            }
-        } catch (error) {
-            console.error('Error en búsqueda:', error);
-            statusMessage.textContent = `Error: ${error.message}`; statusMessage.style.color = 'red';
-            document.getElementById('infoContrato').style.display = 'none';
-            document.getElementById('infoSupervision').style.display = 'none';
-        }
-    }
-
-    document.getElementById('supervisionForm').addEventListener('submit', async function(event) {
-        event.preventDefault();
-        const statusMessage = document.getElementById('statusMessage');
         
-        // El formulario ahora es más simple, solo envía los datos de la supervisión
-        const formData = {
-            num_contrato: document.getElementById('num_contrato_search').value,
-            nombre_especialista: document.getElementById('nombre_especialista').value,
-            numero_parcela: document.getElementById('numero_parcela').value,
-            doc_presentado_ugffs: document.getElementById('doc_presentado_ugffs').value,
-            nro_gtf: document.getElementById('nro_gtf').value,
-            nro_list_troza: document.getElementById('nro_list_troza').value,
-            fech_tala_lo_th: document.getElementById('fech_tala_lo_th').value || null,
-            resultado_analisis: document.getElementById('resultado_analisis').value,
-            doc_generado: document.getElementById('doc_generado').value,
-            observacion: document.getElementById('observacion').value,
-            link_reporte: document.getElementById('link_reporte').value,
-            link_gtf_gerforcloud: document.getElementById('link_gtf').value,
-            remitido_osinfor: document.getElementById('remitido_osinfor').value,
-            fecha_ingreso_campo_osinfor: document.getElementById('fecha_ingreso_osinfor').value || null,
-            n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value,
+        const mapa = L.map('mapa').setView([-5.8, -75.0], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(mapa);
+        
+        let poligonoContratoLayer = null;
+        
+        // Lógica para el botón de cerrar sesión
+        document.getElementById('logoutButton').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', { method: 'POST' });
+                const data = await response.json();
 
-            hallazgos_osinfor: document.getElementById('hallazgos_osinfor').value
-        };
+                if (data.success) {
+                    localStorage.removeItem('username'); 
+                    window.location.href = '/'; 
+                } else {
+                    alert('Error al cerrar sesión.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión al cerrar sesión.');
+            }
+        });
 
-        try {
-            statusMessage.textContent = 'Guardando...'; statusMessage.style.color = 'blue';
-            const response = await fetch('/api/supervision', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
+        async function buscarContrato() {
+            const numContrato = document.getElementById('num_contrato_search').value;
+            const statusMessage = document.getElementById('statusMessage');
+            if (!numContrato) {
+                alert('Ingrese un número de contrato.');
+                return;
+            }
 
-            if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Error al guardar.'); }
-            const result = await response.json();
-            if (result.success) {
-                statusMessage.textContent = result.message; statusMessage.style.color = 'green';
-                document.getElementById('supervisionForm').reset();
+            try {
+                statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
+                if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
+                const encodedContrato = encodeURIComponent(numContrato);
+                const response = await fetch(`/api/contrato/${encodedContrato}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(JSON.parse(errorText).message || 'Error en la búsqueda.');
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const contrato = result.data;
+                    document.getElementById('titular').value = contrato.nomtit || '';
+                    document.getElementById('modalidad').value = contrato.nomobj || '';
+
+                    if (contrato.geojson) {
+                        poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
+                        mapa.fitBounds(poligonoContratoLayer.getBounds());
+                    }
+                    
+                    document.getElementById('infoContrato').style.display = 'block';
+                    document.getElementById('infoSupervision').style.display = 'block';
+                    statusMessage.textContent = 'Contrato encontrado. Llene los datos.';
+                    statusMessage.style.color = 'green';
+                }
+            } catch (error) {
+                console.error('Error en búsqueda:', error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.style.color = 'red';
                 document.getElementById('infoContrato').style.display = 'none';
                 document.getElementById('infoSupervision').style.display = 'none';
-                if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
             }
-        } catch (error) {
-            console.error('Error al guardar:', error);
-            statusMessage.textContent = `Error: ${error.message}`; statusMessage.style.color = 'red';
         }
-    });
-</script>
+
+        document.getElementById('supervisionForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const statusMessage = document.getElementById('statusMessage');
+            
+            const formData = {
+                num_contrato: document.getElementById('num_contrato_search').value,
+                nombre_especialista: document.getElementById('nombre_especialista').value,
+                numero_parcela: document.getElementById('numero_parcela').value,
+                doc_presentado_ugffs: document.getElementById('doc_presentado_ugffs').value,
+                nro_gtf: document.getElementById('nro_gtf').value,
+                nro_list_troza: document.getElementById('nro_list_troza').value,
+                fech_tala_lo_th: document.getElementById('fech_tala_lo_th').value || null,
+                resultado_analisis: document.getElementById('resultado_analisis').value,
+                doc_generado: document.getElementById('doc_generado').value,
+                observacion: document.getElementById('observacion').value,
+                link_reporte: document.getElementById('link_reporte').value,
+                link_gtf_gerforcloud: document.getElementById('link_gtf').value,
+                remitido_osinfor: document.getElementById('remitido_osinfor').value,
+                fecha_ingreso_campo_osinfor: document.getElementById('fecha_ingreso_osinfor').value || null,
+                n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value,
+                hallazgos_osinfor: document.getElementById('hallazgos_osinfor').value
+            };
+
+            try {
+                statusMessage.textContent = 'Guardando...';
+                statusMessage.style.color = 'blue';
+
+                const response = await fetch('/api/supervision', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(JSON.parse(errorText).message || 'Error al guardar.');
+                }
+                
+                const result = await response.json();
+
+                if (result.success) {
+                    statusMessage.textContent = result.message;
+                    statusMessage.style.color = 'green';
+                    document.getElementById('supervisionForm').reset();
+                    document.getElementById('infoContrato').style.display = 'none';
+                    document.getElementById('infoSupervision').style.display = 'none';
+                    if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
+                }
+            } catch (error) {
+                console.error('Error al guardar:', error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.style.color = 'red';
+            }
+        });
+    </script>
 </body>
 </html>
