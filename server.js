@@ -1,4 +1,4 @@
-// 1. IMPORTAR MÓDULOS
+// 1. IMPORTAR MÓDulos
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -111,11 +111,8 @@ app.post('/api/supervision', async (req, res) => {
     }
 });
 
-// RUTA "CATCH-ALL": Si ninguna ruta de la API coincide, sirve el index.html
-// Esto es importante para que el enrutamiento del frontend funcione correctamente.
-app.get('*', (req, res) => {
-    res.sendFile(path.join(publicDirectoryPath, 'index.html'));
-});
+// La ruta app.get('*', ...) se eliminó porque causaba un error de inicio en el servidor.
+// La línea app.use(express.static(...)) de arriba es suficiente para servir el frontend.
 
 // 6. INICIAR EL SERVIDOR
 app.listen(PORT, () => {
