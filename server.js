@@ -113,7 +113,7 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     const {
         num_contrato, nombre_especialista, numero_parcela, doc_presentado_ugffs, nro_gtf,
         nro_list_troza, fech_tala_lo_th, resultado_analisis, doc_generado, observacion,
-        link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_ingreso_campo_osinfor,
+        link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_doc_enviado_a_osinfor,
         n_informe_supervision_osinfor, hallazgos_osinfor
     } = req.body;
     try {
@@ -128,7 +128,7 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
             INSERT INTO public.monitoreo_satel (
                 num_contrato, nomtit, resapr, numero_parcela, doc_presentado_ugffs, nro_gtf,
                 nro_list_troza, fech_tala_lo_th, resultado_analisis, doc_generado, observacion,
-                link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_ingreso_campo_osinfor,
+                link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_doc_enviado_a_osinfor,
                 n_informe_supervision_osinfor, hallazgos_osinfor, nombre_especialista, fuente
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
             RETURNING id;
@@ -136,7 +136,7 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
         const values = [
             num_contrato, nomtit, resapr, numero_parcela, doc_presentado_ugffs, nro_gtf,
             nro_list_troza, fech_tala_lo_th, resultado_analisis, doc_generado, observacion,
-            link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_ingreso_campo_osinfor,
+            link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_doc_enviado_a_osinfor,
             n_informe_supervision_osinfor, hallazgos_osinfor, nombre_especialista, fuente
         ];
         

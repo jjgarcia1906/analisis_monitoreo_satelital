@@ -140,7 +140,9 @@
                         <div class="form-group"><label for="link_reporte">Link Reporte:</label><input type="url" id="link_reporte"></div>
                         <div class="form-group"><label for="link_gtf">Link GTF (gerforcloud):</label><input type="url" id="link_gtf"></div>
                         <div class="form-group"><label for="remitido_osinfor">Remitido a OSINFOR:</label><select id="remitido_osinfor"><option value="NO">NO</option><option value="SI">SI</option></select></div>
-                        <div class="form-group"><label for="fecha_ingreso_osinfor">Fecha Ingreso OSINFOR:</label><input type="date" id="fecha_ingreso_osinfor"></div>
+                        
+                        <div class="form-group"><label for="fecha_doc_enviado_a_osinfor">Fecha Doc. Enviado a OSINFOR:</label><input type="date" id="fecha_doc_enviado_a_osinfor"></div>
+                        
                         <div class="form-group full-width"><label for="n_informe_osinfor">Nº Informe Supervisión OSINFOR:</label><input type="text" id="n_informe_osinfor"></div>
                         <div class="form-group full-width"><label for="observacion">Observación:</label><textarea id="observacion" rows="3"></textarea></div>
                         <div class="form-group full-width"><label for="hallazgos_osinfor">Hallazgos OSINFOR:</label><textarea id="hallazgos_osinfor" rows="3"></textarea></div>
@@ -255,7 +257,7 @@
                 link_reporte: document.getElementById('link_reporte').value,
                 link_gtf_gerforcloud: document.getElementById('link_gtf').value,
                 remitido_osinfor: document.getElementById('remitido_osinfor').value,
-                fecha_ingreso_campo_osinfor: document.getElementById('fecha_ingreso_osinfor').value || null,
+                fecha_doc_enviado_a_osinfor: document.getElementById('fecha_doc_enviado_a_osinfor').value || null, // Nombre corregido aquí
                 n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value,
                 hallazgos_osinfor: document.getElementById('hallazgos_osinfor').value
             };
