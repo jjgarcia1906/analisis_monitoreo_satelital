@@ -32,8 +32,10 @@
 <body>
 
     <div class="header">
-        <h1>Dashboard de Supervisión Forestal</h1>
+    <h1>Dashboard de Supervisión Forestal</h1>
+    <div id="userInfoContainer" style="display: flex; align-items: center; gap: 15px;">
         <div id="userInfo"></div>
+        <button id="logoutButton" style="background-color: #dc3545; padding: 8px 12px; font-size: 14px;">Cerrar Sesión</button>
     </div>
 
     <div class="main-container">
@@ -98,6 +100,28 @@
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(mapa);
     
     let poligonoContratoLayer = null;
+    
+    // Lógica para el botón de cerrar sesión
+const logoutButton = document.getElementById('logoutButton');
+
+logoutButton.addEventListener('click', async () => {
+    try {
+        const response = await fetch('/logout', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            // Si el servidor cerró la sesión, limpiamos los datos del navegador
+            localStorage.removeItem('username'); 
+            // Y redirigimos a la página de login
+            window.location.href = '/'; 
+        } else {
+            alert('Error al cerrar sesión.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión al cerrar sesión.');
+    }
+});
 
     async function buscarContrato() {
         const numContrato = document.getElementById('num_contrato_search').value;

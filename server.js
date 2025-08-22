@@ -67,7 +67,21 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error interno del servidor.' });
     }
 });
-
+// RUTA PARA CERRAR SESIÓN
+app.post('/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            // Si hay un error al destruir la sesión, envía una respuesta de error
+            return res.status(500).json({ success: false, message: 'No se pudo cerrar la sesión.' });
+        }
+        
+        // Limpia la cookie que el navegador guarda
+        res.clearCookie('connect.sid'); 
+        
+        // Envía una respuesta de éxito
+        res.json({ success: true, message: 'Sesión cerrada exitosamente.' });
+    });
+});
 // RUTA PROTEGIDA PARA SERVIR EL DASHBOARD
 // El "portero" (checkAuth) se asegura de que solo usuarios con sesión puedan ver esta página.
 app.get('/dashboard', checkAuth, (req, res) => {
