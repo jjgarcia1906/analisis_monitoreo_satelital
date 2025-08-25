@@ -149,20 +149,15 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     }
 });
 
-// ▼▼▼ LA RUTA DE DESCARGA AHORA ESTÁ AQUÍ, EN EL LUGAR CORRECTO ▼▼▼
-// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO
-app.get('/api/download/shapefile/:num_contrato', async (req, res) => {
+// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - CON DEBUG MEJORADO
+app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     console.log(`Petición de descarga de Shapefile para el contrato: ${num_contrato}`);
 
     try {
         const query = `
             SELECT 
-                numcon, 
-                nomtit, 
-                resapr, 
-                nomobj,
-                fuente,
+                numcon, nomtit, resapr, nomobj, fuente,
                 ST_AsGeoJSON(geom) as geojson 
             FROM public.permisos_forestales 
             WHERE numcon = $1
@@ -175,6 +170,10 @@ app.get('/api/download/shapefile/:num_contrato', async (req, res) => {
 
         const data = result.rows[0];
         
+        if (!data.geojson) {
+            return res.status(404).send('Error: El contrato encontrado no tiene una geometría (polígono) para descargar.');
+        }
+
         const geoJsonFeature = {
             type: "FeatureCollection",
             features: [
@@ -199,8 +198,11 @@ app.get('/api/download/shapefile/:num_contrato', async (req, res) => {
         res.send(shapefileBuffer);
 
     } catch (error) {
-        console.error('Error al generar el Shapefile:', error);
-        res.status(500).send('Error interno al generar el archivo.');
+        // --- SECCIÓN MODIFICADA ---
+        // Imprime el error completo y detallado en los logs de Render
+        console.error('--- ERROR DETALLADO AL GENERAR SHAPEFILE ---');
+        console.error(error); 
+        res.status(500).send('Error interno al generar el archivo. Revisa los logs del servidor para más detalles.');
     }
 });
 
