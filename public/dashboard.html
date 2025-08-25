@@ -180,16 +180,36 @@
     
     // --- LÓGICA DE EVENTOS ---
 
-    document.getElementById('logoutButton').addEventListener('click', async () => { /* ... tu código de logout no cambia ... */ });
-    document.getElementById('downloadButton').addEventListener('click', () => { /* ... tu código de descarga no cambia ... */ });
+    document.getElementById('logoutButton').addEventListener('click', async () => {
+        try {
+            const response = await fetch('/logout', { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                localStorage.removeItem('username'); 
+                window.location.href = '/'; 
+            } else {
+                alert('Error al cerrar sesión.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error de conexión al cerrar sesión.');
+        }
+    });
 
-    // Evento para el formulario de guardar supervisión - VERSIÓN MEJORADA
+    document.getElementById('downloadButton').addEventListener('click', () => {
+        const numContrato = document.getElementById('num_contrato_search').value;
+        if (!numContrato) {
+            alert('No hay un número de contrato para descargar.');
+            return;
+        }
+        const encodedContrato = encodeURIComponent(numContrato);
+        window.location.href = `/api/download/shapefile/${encodedContrato}`;
+    });
+
     document.getElementById('supervisionForm').addEventListener('submit', async function(event) {
         event.preventDefault();
         
-        // --- INICIO DE LA NUEVA LÓGICA DE VALIDACIÓN Y CONFIRMACIÓN ---
-
-        // 1. VALIDAMOS EL 40% DE LOS CAMPOS
+        // VALIDACIÓN DEL 40% DE LOS CAMPOS
         const fieldsToValidate = [
             'nombre_especialista', 'numero_parcela', 'doc_presentado_ugffs', 'nro_gtf',
             'nro_list_troza', 'fech_tala_lo_th', 'resultado_analisis', 'doc_generado',
@@ -201,7 +221,6 @@
 
         fieldsToValidate.forEach(id => {
             const field = document.getElementById(id);
-            // Contamos el campo si existe y su valor no está vacío (ignorando espacios en blanco)
             if (field && field.value.trim() !== '') {
                 filledFields++;
             }
@@ -211,18 +230,15 @@
 
         if (percentageFilled < 40) {
             alert(`Por favor, llene al menos el 40% de los campos de supervisión.\nHa llenado ${filledFields} de ${totalFields} campos.`);
-            return; // Detiene el proceso de guardado
+            return;
         }
 
-        // 2. PEDIMOS CONFIRMACIÓN AL USUARIO
+        // PREGUNTA DE CONFIRMACIÓN
         if (!confirm("¿Está seguro de que desea guardar esta supervisión?")) {
-            return; // Si el usuario hace clic en "Cancelar", detenemos el proceso.
+            return;
         }
-
-        // --- FIN DE LA NUEVA LÓGICA ---
         
         const statusMessage = document.getElementById('statusMessage');
-        
         const formData = {
             num_contrato: document.getElementById('num_contrato_search').value,
             nombre_especialista: document.getElementById('nombre_especialista').value,
@@ -245,7 +261,6 @@
         try {
             statusMessage.textContent = 'Guardando...';
             statusMessage.style.color = 'blue';
-
             const response = await fetch('/api/supervision', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -258,7 +273,6 @@
             }
             
             const result = await response.json();
-
             if (result.success) {
                 statusMessage.textContent = result.message;
                 statusMessage.style.color = 'green';
@@ -275,9 +289,52 @@
         }
     });
 
-    // --- FUNCIONES ---
+    // --- FUNCIÓN DE BÚSQUEDA RESTAURADA ---
     async function buscarContrato() {
-        // ... tu código de búsqueda no cambia ...
+        const numContrato = document.getElementById('num_contrato_search').value;
+        const statusMessage = document.getElementById('statusMessage');
+        if (!numContrato) {
+            alert('Ingrese un número de contrato.');
+            return;
+        }
+
+        try {
+            statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
+            if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
+            document.getElementById('downloadContainer').style.display = 'none';
+            
+            const encodedContrato = encodeURIComponent(numContrato);
+            const response = await fetch(`/api/contrato/${encodedContrato}`);
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error en la búsqueda.');
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                const contrato = result.data;
+                document.getElementById('titular').value = contrato.nomtit || '';
+                document.getElementById('modalidad').value = contrato.nomobj || '';
+
+                if (contrato.geojson) {
+                    poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
+                    mapa.fitBounds(poligonoContratoLayer.getBounds());
+                }
+                
+                document.getElementById('infoContrato').style.display = 'block';
+                document.getElementById('infoSupervision').style.display = 'block';
+                document.getElementById('downloadContainer').style.display = 'block';
+                statusMessage.textContent = 'Contrato encontrado. Llene los datos.';
+                statusMessage.style.color = 'green';
+            }
+        } catch (error) {
+            console.error('Error en búsqueda:', error);
+            statusMessage.textContent = `Error: ${error.message}`;
+            statusMessage.style.color = 'red';
+            document.getElementById('infoContrato').style.display = 'none';
+            document.getElementById('infoSupervision').style.display = 'none';
+        }
     }
 </script>
 </body>
