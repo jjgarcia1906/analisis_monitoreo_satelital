@@ -143,7 +143,7 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - VERSIÓN FINAL
+// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - VERSIÓN FINAL Y ROBUSTA
 app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     console.log(`Petición de descarga de Shapefile para el contrato: ${num_contrato}`);
@@ -168,23 +168,32 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
             return res.status(404).send('Error: El contrato encontrado no tiene una geometría (polígono) para descargar.');
         }
 
-        // --- INICIO DE LA SECCIÓN MODIFICADA ---
+        let geometry = JSON.parse(data.geojson);
 
-        // 1. Definimos la estructura de datos que espera shp-write
+        // --- INICIO DE LA NUEVA LÓGICA DE SIMPLIFICACIÓN ---
+        // Si es un MultiPolygon con una sola parte, lo convertimos a Polygon para mayor compatibilidad
+        if (geometry.type === 'MultiPolygon' && geometry.coordinates.length === 1) {
+            console.log("Simplificando MultiPolygon a Polygon...");
+            geometry = {
+                type: 'Polygon',
+                coordinates: geometry.coordinates[0] // Tomamos solo el primer (y único) polígono
+            };
+        }
+        // --- FIN DE LA NUEVA LÓGICA DE SIMPLIFICACIÓN ---
+
         const options = {
-            folder: 'myshapefile', // Nombre de la carpeta dentro del zip
+            folder: 'poligono',
             types: {
-                polygon: 'mypolygons' // Nombre de los archivos .shp, .dbf, etc.
+                polygon: num_contrato.replace(/[^a-zA-Z0-9_-]/g, '_') // Usamos el número de contrato como nombre de archivo
             }
         };
-
-        // 2. Creamos el objeto GeoJSON (igual que antes)
+        
         const geoJsonData = {
             type: "FeatureCollection",
             features: [
                 {
                     type: "Feature",
-                    geometry: JSON.parse(data.geojson),
+                    geometry: geometry, // Usamos la geometría ya procesada
                     properties: {
                         num_contr: data.numcon,
                         titular: data.nomtit,
@@ -195,23 +204,17 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
                 }
             ]
         };
-        
-        // NOTA: Los nombres de las propiedades se acortan a 10 caracteres para ser compatibles con el formato .dbf del Shapefile.
-        // ej: num_contrato -> num_contr
 
-        // 3. Convertimos y generamos el buffer del archivo .zip
-        const shapefileBuffer = await shpwrite.zip(geoJsonData, options);
-
-        // --- FIN DE LA SECCIÓN MODIFICADA ---
+        const shapefileBuffer = shpwrite.zip(geoJsonData, options);
 
         res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=${num_contrato}.zip`);
+        res.setHeader('Content-Disposition', `attachment; filename=${num_contrato.replace(/[^a-zA-Z0-9_-]/g, '_')}.zip`);
         res.send(shapefileBuffer);
 
     } catch (error) {
         console.error('--- ERROR DETALLADO AL GENERAR SHAPEFILE ---');
         console.error(error); 
-        res.status(500).send('Error interno al generar el archivo. Revisa los logs del servidor para más detalles.');
+        res.status(500).send('Error interno al generar el archivo.');
     }
 });
 
