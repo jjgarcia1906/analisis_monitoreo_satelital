@@ -4,7 +4,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
 const session = require('express-session');
-const geojson2shp = require('geojson2shp');
+const geojson2shp = require('geojson2shp').default;
 
 // 2. INICIALIZAR LA APLICACIÓN Y PUERTO
 const app = express();
