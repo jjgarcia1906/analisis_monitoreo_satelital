@@ -4,7 +4,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
 const session = require('express-session');
-const geojson2shp = require('geojson2shp').default;
+const shpwrite = require('shp-write');
 
 // 2. INICIALIZAR LA APLICACIÓN Y PUERTO
 const app = express();
@@ -31,13 +31,12 @@ app.use(session({
 // EL "PORTERO" (MIDDLEWARE DE AUTENTICACIÓN)
 const checkAuth = (req, res, next) => {
     if (!req.session.user) {
-        // Si el usuario no está logueado, lo enviamos a la página de inicio
         return res.redirect('/');
     }
     next();
 };
 
-// 5. SERVIR LOS ARCHIVOS PÚBLICOS DEL FRONTEND (COMO EL LOGIN)
+// 5. SERVIR LOS ARCHIVOS PÚBLICOS DEL FRONTEND
 const publicDirectoryPath = path.join(__dirname, './public');
 app.use(express.static(publicDirectoryPath));
 
@@ -54,7 +53,6 @@ app.post('/login', async (req, res) => {
 
         if (result.rows.length > 0) {
             const user = result.rows[0];
-            // Creamos la sesión del usuario
             req.session.user = {
                 username: user.nombre_usuario,
                 role: user.rol
@@ -68,23 +66,19 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error interno del servidor.' });
     }
 });
+
 // RUTA PARA CERRAR SESIÓN
 app.post('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
-            // Si hay un error al destruir la sesión, envía una respuesta de error
             return res.status(500).json({ success: false, message: 'No se pudo cerrar la sesión.' });
         }
-        
-        // Limpia la cookie que el navegador guarda
         res.clearCookie('connect.sid'); 
-        
-        // Envía una respuesta de éxito
         res.json({ success: true, message: 'Sesión cerrada exitosamente.' });
     });
 });
+
 // RUTA PROTEGIDA PARA SERVIR EL DASHBOARD
-// El "portero" (checkAuth) se asegura de que solo usuarios con sesión puedan ver esta página.
 app.get('/dashboard', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, './public/dashboard.html'));
 });
@@ -93,7 +87,7 @@ app.get('/dashboard', checkAuth, (req, res) => {
 app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     try {
-        const query = 'SELECT numcon, nomtit, resapr, nomobj, ST_AsGeoJSON(geom) as geojson FROM public.permisos_forestales WHERE numcon = $1';
+        const query = 'SELECT numcon, nomtit, resapr, nomobj, fuente, ST_AsGeoJSON(geom) as geojson FROM public.permisos_forestales WHERE numcon = $1';
         const result = await pool.query(query, [num_contrato]);
 
         if (result.rows.length > 0) {
@@ -149,7 +143,7 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - CON DEBUG MEJORADO
+// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - PROTEGIDA
 app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     console.log(`Petición de descarga de Shapefile para el contrato: ${num_contrato}`);
@@ -191,15 +185,13 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
             ]
         };
 
-        const shapefileBuffer = await geojson2shp(geoJsonFeature);
+        const shapefileBuffer = shpwrite.zip(geoJsonFeature);
 
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${num_contrato}.zip`);
         res.send(shapefileBuffer);
 
     } catch (error) {
-        // --- SECCIÓN MODIFICADA ---
-        // Imprime el error completo y detallado en los logs de Render
         console.error('--- ERROR DETALLADO AL GENERAR SHAPEFILE ---');
         console.error(error); 
         res.status(500).send('Error interno al generar el archivo. Revisa los logs del servidor para más detalles.');
@@ -210,4 +202,3 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
 app.listen(PORT, () => {
     console.log(`Servidor backend corriendo en el puerto ${PORT}`);
 });
-
