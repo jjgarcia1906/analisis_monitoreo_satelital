@@ -143,15 +143,20 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - PROTEGIDA
+// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO
 app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     console.log(`Petición de descarga de Shapefile para el contrato: ${num_contrato}`);
 
     try {
+        // 1. Buscamos el contrato y sus datos en la base de datos
         const query = `
             SELECT 
-                numcon, nomtit, resapr, nomobj, fuente,
+                numcon, 
+                nomtit, 
+                resapr, 
+                nomobj,
+                fuente,
                 ST_AsGeoJSON(geom) as geojson 
             FROM public.permisos_forestales 
             WHERE numcon = $1
@@ -164,10 +169,12 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
 
         const data = result.rows[0];
         
+        // Verificamos si el contrato tiene una geometría
         if (!data.geojson) {
             return res.status(404).send('Error: El contrato encontrado no tiene una geometría (polígono) para descargar.');
         }
 
+        // 2. Construimos un objeto GeoJSON válido (FeatureCollection)
         const geoJsonFeature = {
             type: "FeatureCollection",
             features: [
@@ -185,13 +192,21 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
             ]
         };
 
+        // 3. Imprimimos el GeoJSON en los logs para depurarlo
+        console.log("GeoJSON a convertir:", JSON.stringify(geoJsonFeature, null, 2));
+
+        // 4. Convertimos el GeoJSON a un buffer de Shapefile (.zip)
         const shapefileBuffer = shpwrite.zip(geoJsonFeature);
 
+        // 5. Configuramos la respuesta para que el navegador descargue el archivo
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${num_contrato}.zip`);
+
+        // 6. Enviamos el archivo .zip al usuario
         res.send(shapefileBuffer);
 
     } catch (error) {
+        // Si algo falla, lo registramos en los logs
         console.error('--- ERROR DETALLADO AL GENERAR SHAPEFILE ---');
         console.error(error); 
         res.status(500).send('Error interno al generar el archivo. Revisa los logs del servidor para más detalles.');
