@@ -4,6 +4,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
 const session = require('express-session');
+const geojson2shp = require('geojson2shp');
 
 // 2. INICIALIZAR LA APLICACIÓN Y PUERTO
 const app = express();
@@ -148,7 +149,63 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     }
 });
 
+// ▼▼▼ LA RUTA DE DESCARGA AHORA ESTÁ AQUÍ, EN EL LUGAR CORRECTO ▼▼▼
+// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO
+app.get('/api/download/shapefile/:num_contrato', async (req, res) => {
+    const { num_contrato } = req.params;
+    console.log(`Petición de descarga de Shapefile para el contrato: ${num_contrato}`);
+
+    try {
+        const query = `
+            SELECT 
+                numcon, 
+                nomtit, 
+                resapr, 
+                nomobj,
+                fuente,
+                ST_AsGeoJSON(geom) as geojson 
+            FROM public.permisos_forestales 
+            WHERE numcon = $1
+        `;
+        const result = await pool.query(query, [num_contrato]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).send('Contrato no encontrado.');
+        }
+
+        const data = result.rows[0];
+        
+        const geoJsonFeature = {
+            type: "FeatureCollection",
+            features: [
+                {
+                    type: "Feature",
+                    geometry: JSON.parse(data.geojson),
+                    properties: {
+                        num_contrato: data.numcon,
+                        titular: data.nomtit,
+                        resolucion: data.resapr,
+                        modalidad: data.nomobj,
+                        fuente: data.fuente
+                    }
+                }
+            ]
+        };
+
+        const shapefileBuffer = await geojson2shp(geoJsonFeature);
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename=${num_contrato}.zip`);
+        res.send(shapefileBuffer);
+
+    } catch (error) {
+        console.error('Error al generar el Shapefile:', error);
+        res.status(500).send('Error interno al generar el archivo.');
+    }
+});
+
 // 6. INICIAR EL SERVIDOR
 app.listen(PORT, () => {
     console.log(`Servidor backend corriendo en el puerto ${PORT}`);
 });
+
