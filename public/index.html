@@ -37,62 +37,61 @@
     </div>
 
     <script>
-        // 1. Seleccionamos los elementos del HTML con los que vamos a trabajar.
-        const form = document.getElementById('loginForm');
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        const messageElement = document.getElementById('message');
+    const form = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const messageElement = document.getElementById('message');
 
-        // 2. Añadimos un "escuchador" para el evento de envío del formulario.
-        form.addEventListener('submit', function(event) {
-            // Prevenimos el comportamiento por defecto del formulario (que es recargar la página).
-            event.preventDefault(); 
+    form.addEventListener('submit', function(event) {
+        event.preventDefault(); 
 
-            // 3. Obtenemos los valores escritos por el usuario.
-            const username = usernameInput.value;
-            const password = passwordInput.value;
+        const username = usernameInput.value;
+        const password = passwordInput.value;
 
-            // 4. Usamos la API fetch para enviar los datos al backend.
-            // ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
-            fetch('/login', {
-                method: 'POST', // Usamos el método POST porque estamos enviando datos.
-                headers: {
-                    'Content-Type': 'application/json' // Le decimos al servidor que enviaremos datos en formato JSON.
-                },
-                body: JSON.stringify({ // Convertimos nuestro objeto de JavaScript a una cadena de texto JSON.
-                    username: username,
-                    password: password
-                })
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
             })
-            .then(response => response.json()) // Esperamos la respuesta del servidor y la convertimos de JSON a un objeto.
-            .then(data => {
-                // 5. Manejamos la respuesta del servidor.
-                if (data.success) {
-                    // Mostramos un mensaje de éxito por un momento
-                    messageElement.textContent = '¡Éxito! Redirigiendo...';
-                    messageElement.className = 'success';
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                messageElement.textContent = '¡Éxito! Redirigiendo...';
+                messageElement.className = 'success';
+                localStorage.setItem('username', username);
 
-                    // (BONUS) Guardamos el nombre de usuario en el almacenamiento local del navegador
-                    // para poder mostrarlo en el dashboard.
-                    localStorage.setItem('username', username);
-
-                    // Redirigimos al dashboard después de 1 segundo para que el usuario vea el mensaje.
-                    setTimeout(() => {
+                // --- INICIO DE LA LÓGICA DE REDIRECCIÓN CORREGIDA ---
+                setTimeout(() => {
+                    if (data.role === 'admin' || data.role === 'usuario') {
+                        // Si es admin o usuario, va al dashboard de edición
                         window.location.href = '/dashboard';
-                    }, 1000); // 1000 milisegundos = 1 segundo
+                    } else if (data.role === 'usuario_consulta') {
+                        // Si es de consulta, va al nuevo dashboard
+                        window.location.href = '/consulta';
+                    } else {
+                        // Caso de seguridad por si hay un rol desconocido
+                        messageElement.textContent = 'Rol de usuario no reconocido.';
+                        messageElement.className = 'error';
+                    }
+                }, 1000);
+                // --- FIN DE LA LÓGICA DE REDIRECCIÓN ---
 
-                } else {
-                    messageElement.textContent = data.message;
-                    messageElement.className = 'error'; // Aplicamos el estilo de error (rojo).
-                }
-            })
-            .catch(error => {
-                // 6. Manejamos cualquier error de red (ej: si el servidor no está corriendo).
-                console.error('Error:', error);
-                messageElement.textContent = 'Error de conexión con el servidor.';
+            } else {
+                messageElement.textContent = data.message;
                 messageElement.className = 'error';
-            });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            messageElement.textContent = 'Error de conexión con el servidor.';
+            messageElement.className = 'error';
         });
-    </script>
+    });
+</script>
     </body>
 </html>
