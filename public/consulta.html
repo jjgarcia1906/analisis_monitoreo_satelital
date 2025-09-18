@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Consulta</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* --- Estructura General --- */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            background-color: #f4f4f9; 
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Encabezado Superior --- */
+        .header {
+            background-color: #004d40;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+        .header h1 { margin: 0; font-size: 1.5em; }
+        .user-info-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        #logoutButton {
+            background-color: #dc3545;
+            padding: 8px 15px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+        #logoutButton:hover { opacity: 0.85; }
+
+        /* --- Contenedor Principal --- */
+        .main-container {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            align-items: stretch;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        .form-container {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+        .map-container {
+            flex: 1;
+            display: flex;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        #mapa { height: 100%; width: 100%; border-radius: 8px; }
+
+        /* --- Estilos del Formulario --- */
+        h2 { text-align: center; color: #333; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .full-width { grid-column: 1 / -1; }
+        .search-section { display: flex; gap: 10px; align-items: flex-end; }
+        button { padding: 10px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button.primary { background-color: #007bff; }
+        button.download { background-color: #17a2b8; }
+        button:hover { opacity: 0.9; }
+        #statusMessage { text-align: center; margin-top: 20px; font-weight: bold; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Portal de Consulta de Contratos</h1>
+        <div class="user-info-container">
+            <span id="userInfo"></span>
+            <button id="logoutButton">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="form-container">
+            <h2>Consulta de Contratos</h2>
+            <form id="consultaForm">
+                <fieldset class="full-width">
+                    <legend>1. Buscar Contrato</legend>
+                    <div class="form-group search-section">
+                        <div style="flex-grow: 1;">
+                            <label for="num_contrato_search">Número de Contrato:</label>
+                            <input type="text" id="num_contrato_search" required>
+                        </div>
+                        <button type="button" class="primary" onclick="buscarContrato()">Buscar</button>
+                    </div>
+                </fieldset>
+                <div id="downloadContainer" class="form-group full-width" style="text-align: center; display: none; margin-top: 20px;">
+                    <button type="button" id="downloadButton" class="download">Descargar Shapefile del Polígono</button>
+                </div>
+            </form>
+            <p id="statusMessage"></p>
+        </div>
+        <div class="map-container">
+            <div id="mapa"></div>
+        </div>
+    </div>
+
+    <script>
+        const loggedInUser = localStorage.getItem('username');
+        if (loggedInUser) {
+            document.getElementById('userInfo').textContent = `Bienvenido, ${loggedInUser}`;
+        } else {
+            window.location.href = '/'; 
+        }
+        
+        const mapa = L.map('mapa').setView([-5.8, -75.0], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(mapa);
+        
+        let poligonoContratoLayer = null;
+        
+        // Lógica para el botón de cerrar sesión
+        document.getElementById('logoutButton').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.removeItem('username'); 
+                    window.location.href = '/'; 
+                } else {
+                    alert('Error al cerrar sesión.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión al cerrar sesión.');
+            }
+        });
+
+        // Lógica para el botón de descargar
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            const numContrato = document.getElementById('num_contrato_search').value;
+            if (!numContrato) {
+                alert('No hay un número de contrato para descargar.');
+                return;
+            }
+            const encodedContrato = encodeURIComponent(numContrato);
+            window.location.href = `/api/download/shapefile/${encodedContrato}`;
+        });
+
+        // Lógica para el botón de buscar
+        async function buscarContrato() {
+            const numContrato = document.getElementById('num_contrato_search').value;
+            const statusMessage = document.getElementById('statusMessage');
+            if (!numContrato) {
+                alert('Ingrese un número de contrato.');
+                return;
+            }
+
+            try {
+                statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
+                if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
+                document.getElementById('downloadContainer').style.display = 'none';
+                
+                const encodedContrato = encodeURIComponent(numContrato);
+                const response = await fetch(`/api/contrato/${encodedContrato}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Error en la búsqueda.');
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    const contrato = result.data;
+                    
+                    if (contrato.geojson) {
+                        poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
+                        mapa.fitBounds(poligonoContratoLayer.getBounds());
+                    }
+                    
+                    document.getElementById('downloadContainer').style.display = 'block';
+                    statusMessage.textContent = 'Contrato encontrado.';
+                    statusMessage.style.color = 'green';
+                }
+            } catch (error) {
+                console.error('Error en búsqueda:', error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>

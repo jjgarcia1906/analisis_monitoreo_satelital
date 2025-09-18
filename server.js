@@ -44,7 +44,7 @@ app.use(express.static(publicDirectoryPath));
 // RUTAS
 // ================================================================
 
-// RUTA PARA EL LOGIN - CREA LA SESIÓN
+// RUTA PARA EL LOGIN - CREA LA SESIÓN Y DEVUELVE EL ROL
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -57,7 +57,7 @@ app.post('/login', async (req, res) => {
                 username: user.nombre_usuario,
                 role: user.rol
             };
-            res.json({ success: true, message: '¡Bienvenido!' });
+            res.json({ success: true, role: user.rol });
         } else {
             res.json({ success: false, message: 'Usuario o contraseña incorrectos.' });
         }
@@ -78,9 +78,14 @@ app.post('/logout', (req, res) => {
     });
 });
 
-// RUTA PROTEGIDA PARA SERVIR EL DASHBOARD
+// RUTA PROTEGIDA PARA SERVIR EL DASHBOARD DE ADMINISTRACIÓN
 app.get('/dashboard', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, './public/dashboard.html'));
+});
+
+// RUTA PROTEGIDA PARA SERVIR EL DASHBOARD DE CONSULTA
+app.get('/consulta', checkAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, './public/consulta.html'));
 });
 
 // RUTA PARA BUSCAR UN CONTRATO - PROTEGIDA
@@ -143,7 +148,7 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - VERSIÓN FINAL Y ROBUSTA
+// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - PROTEGIDA
 app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     console.log(`Petición de descarga de Shapefile para el contrato: ${num_contrato}`);
@@ -170,21 +175,19 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
 
         let geometry = JSON.parse(data.geojson);
 
-        // --- INICIO DE LA NUEVA LÓGICA DE SIMPLIFICACIÓN ---
         // Si es un MultiPolygon con una sola parte, lo convertimos a Polygon para mayor compatibilidad
         if (geometry.type === 'MultiPolygon' && geometry.coordinates.length === 1) {
             console.log("Simplificando MultiPolygon a Polygon...");
             geometry = {
                 type: 'Polygon',
-                coordinates: geometry.coordinates[0] // Tomamos solo el primer (y único) polígono
+                coordinates: geometry.coordinates[0]
             };
         }
-        // --- FIN DE LA NUEVA LÓGICA DE SIMPLIFICACIÓN ---
 
         const options = {
             folder: 'poligono',
             types: {
-                polygon: num_contrato.replace(/[^a-zA-Z0-9_-]/g, '_') // Usamos el número de contrato como nombre de archivo
+                polygon: num_contrato.replace(/[^a-zA-Z0-9_-]/g, '_')
             }
         };
         
@@ -193,7 +196,7 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
             features: [
                 {
                     type: "Feature",
-                    geometry: geometry, // Usamos la geometría ya procesada
+                    geometry: geometry,
                     properties: {
                         num_contr: data.numcon,
                         titular: data.nomtit,
