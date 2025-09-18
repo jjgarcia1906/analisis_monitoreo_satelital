@@ -92,7 +92,7 @@ app.get('/consulta', checkAuth, (req, res) => {
 app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     try {
-        const query = 'SELECT numcon, nomtit, resapr, nomobj, fuente, ST_AsGeoJSON(geom) as geojson FROM public.permisos_forestales WHERE numcon = $1';
+        const query = 'SELECT numcon, nomtit, resapr, nomobj, fuente, denomi, ST_AsGeoJSON(geom) as geojson FROM public.permisos_forestales WHERE numcon = $1';
         const result = await pool.query(query, [num_contrato]);
 
         if (result.rows.length > 0) {
@@ -151,12 +151,11 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
 // RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - PROTEGIDA
 app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
-    console.log(`Petición de descarga de Shapefile para el contrato: ${num_contrato}`);
-
     try {
+        // ▼▼▼ CAMBIO CLAVE AQUÍ ▼▼▼
         const query = `
             SELECT 
-                numcon, nomtit, resapr, nomobj, fuente,
+                numcon, nomtit, resapr, nomobj, fuente, denomi,
                 ST_AsGeoJSON(geom) as geojson 
             FROM public.permisos_forestales 
             WHERE numcon = $1
@@ -170,14 +169,12 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
         const data = result.rows[0];
         
         if (!data.geojson) {
-            return res.status(404).send('Error: El contrato encontrado no tiene una geometría (polígono) para descargar.');
+            return res.status(404).send('Error: El contrato no tiene una geometría para descargar.');
         }
 
         let geometry = JSON.parse(data.geojson);
 
-        // Si es un MultiPolygon con una sola parte, lo convertimos a Polygon para mayor compatibilidad
         if (geometry.type === 'MultiPolygon' && geometry.coordinates.length === 1) {
-            console.log("Simplificando MultiPolygon a Polygon...");
             geometry = {
                 type: 'Polygon',
                 coordinates: geometry.coordinates[0]
@@ -202,7 +199,8 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
                         titular: data.nomtit,
                         resoluc: data.resapr,
                         modalidad: data.nomobj,
-                        fuente: data.fuente
+                        fuente: data.fuente,
+                        denomi: data.denomi // Ahora sí se incluirá
                     }
                 }
             ]
