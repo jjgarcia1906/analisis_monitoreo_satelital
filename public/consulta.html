@@ -71,7 +71,7 @@
         }
         #mapa { height: 100%; width: 100%; border-radius: 8px; }
 
-        /* --- Estilos del Formulario --- */
+        /* --- Estilos del Formulario y Tabla --- */
         h2 { text-align: center; color: #333; margin-top: 0; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
@@ -89,6 +89,20 @@
         button.download { background-color: #17a2b8; }
         button:hover { opacity: 0.9; }
         #statusMessage { text-align: center; margin-top: 20px; font-weight: bold; min-height: 20px; }
+        
+        /* Estilos para la tabla de resultados */
+        #resultsTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        #resultsTable td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        #resultsTable td:first-child {
+            width: 40%; /* Ancho para las etiquetas */
+        }
     </style>
 </head>
 <body>
@@ -104,21 +118,30 @@
     <div class="main-container">
         <div class="form-container">
             <h2>Consulta de Contratos</h2>
-            <form id="consultaForm">
-                <fieldset class="full-width">
-                    <legend>1. Buscar Contrato</legend>
-                    <div class="form-group search-section">
-                        <div style="flex-grow: 1;">
-                            <label for="num_contrato_search">Número de Contrato:</label>
-                            <input type="text" id="num_contrato_search" required>
-                        </div>
-                        <button type="button" class="primary" onclick="buscarContrato()">Buscar</button>
+            
+            <fieldset class="full-width">
+                <legend>1. Buscar Contrato</legend>
+                <div class="form-group search-section">
+                    <div style="flex-grow: 1;">
+                        <label for="num_contrato_search">Número de Contrato:</label>
+                        <input type="text" id="num_contrato_search" required>
                     </div>
-                </fieldset>
-                <div id="downloadContainer" class="form-group full-width" style="text-align: center; display: none; margin-top: 20px;">
-                    <button type="button" id="downloadButton" class="download">Descargar Shapefile del Polígono</button>
+                    <button type="button" class="primary" onclick="buscarContrato()">Buscar</button>
                 </div>
-            </form>
+            </fieldset>
+
+            <div id="resultsContainer" style="display: none; margin-top: 20px;">
+                <fieldset>
+                    <legend>2. Información del Contrato</legend>
+                    <table id="resultsTable">
+                        </table>
+                </fieldset>
+            </div>
+            
+            <div id="downloadContainer" class="form-group full-width" style="text-align: center; display: none; margin-top: 20px;">
+                <button type="button" id="downloadButton" class="download">Descargar Shapefile del Polígono</button>
+            </div>
+
             <p id="statusMessage"></p>
         </div>
         <div class="map-container">
@@ -131,24 +154,24 @@
         if (loggedInUser) {
             document.getElementById('userInfo').textContent = `Bienvenido, ${loggedInUser}`;
         } else {
-            window.location.href = '/'; 
+            window.location.href = '/';
         }
-        
+
         const mapa = L.map('mapa').setView([-5.8, -75.0], 6);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO'
         }).addTo(mapa);
-        
+
         let poligonoContratoLayer = null;
-        
+
         // Lógica para el botón de cerrar sesión
         document.getElementById('logoutButton').addEventListener('click', async () => {
             try {
                 const response = await fetch('/logout', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
-                    localStorage.removeItem('username'); 
-                    window.location.href = '/'; 
+                    localStorage.removeItem('username');
+                    window.location.href = '/';
                 } else {
                     alert('Error al cerrar sesión.');
                 }
@@ -168,39 +191,71 @@
             const encodedContrato = encodeURIComponent(numContrato);
             window.location.href = `/api/download/shapefile/${encodedContrato}`;
         });
-
-        // Lógica para el botón de buscar
+        
+        // --- FUNCIÓN DE BÚSQUEDA MEJORADA ---
         async function buscarContrato() {
             const numContrato = document.getElementById('num_contrato_search').value;
             const statusMessage = document.getElementById('statusMessage');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const resultsTable = document.getElementById('resultsTable');
+            const downloadContainer = document.getElementById('downloadContainer');
+
+            // Limpiar resultados anteriores
+            resultsTable.innerHTML = '';
+            resultsContainer.style.display = 'none';
+            downloadContainer.style.display = 'none';
+            if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
+
             if (!numContrato) {
                 alert('Ingrese un número de contrato.');
                 return;
             }
 
             try {
-                statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
-                if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
-                document.getElementById('downloadContainer').style.display = 'none';
-                
+                statusMessage.textContent = 'Buscando...';
+                statusMessage.style.color = 'blue';
+
                 const encodedContrato = encodeURIComponent(numContrato);
                 const response = await fetch(`/api/contrato/${encodedContrato}`);
-                
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Error en la búsqueda.');
                 }
 
                 const result = await response.json();
+
                 if (result.success) {
                     const contrato = result.data;
                     
+                    // Mapeo de nombres técnicos a nombres legibles
+                    const fieldMappings = {
+                        numcon: "Número de Contrato",
+                        nomtit: "Titular",
+                        resapr: "Resolución",
+                        nomobj: "Modalidad",
+                        fuente: "Fuente"
+                    };
+
+                    // Construir la tabla de resultados dinámicamente
+                    for (const key in fieldMappings) {
+                        if (contrato[key]) { // Solo mostrar si el dato existe
+                            const row = resultsTable.insertRow();
+                            const cell1 = row.insertCell(0);
+                            const cell2 = row.insertCell(1);
+                            cell1.innerHTML = `<strong>${fieldMappings[key]}:</strong>`;
+                            cell2.textContent = contrato[key];
+                        }
+                    }
+                    
+                    resultsContainer.style.display = 'block';
+
                     if (contrato.geojson) {
                         poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
                         mapa.fitBounds(poligonoContratoLayer.getBounds());
+                        downloadContainer.style.display = 'block';
                     }
                     
-                    document.getElementById('downloadContainer').style.display = 'block';
                     statusMessage.textContent = 'Contrato encontrado.';
                     statusMessage.style.color = 'green';
                 }
@@ -211,5 +266,6 @@
             }
         }
     </script>
+
 </body>
 </html>
