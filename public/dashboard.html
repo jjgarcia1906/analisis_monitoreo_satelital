@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Principal</title>
+    <title>Dashboard de Análisis</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -17,7 +17,6 @@
             height: 100vh;
             overflow: hidden;
         }
-
         /* --- Encabezado Superior --- */
         .header {
             background-color: #004d40;
@@ -45,7 +44,6 @@
             cursor: pointer;
         }
         #logoutButton:hover { opacity: 0.85; }
-
         /* --- Contenedor Principal --- */
         .main-container {
             display: flex;
@@ -70,7 +68,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         #mapa { height: 100%; width: 100%; border-radius: 8px; }
-
         /* --- Estilos del Formulario --- */
         h2 { text-align: center; color: #333; margin-top: 0; }
         .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -97,7 +94,7 @@
 <body>
 
     <div class="header">
-        <h1>Dashboard de Supervisión Forestal</h1>
+        <h1>Dashboard de Análisis Satelital</h1>
         <div class="user-info-container">
             <span id="userInfo"></span>
             <button id="logoutButton">Cerrar Sesión</button>
@@ -106,7 +103,7 @@
 
     <div class="main-container">
         <div class="form-container">
-            <h2>Registro de Supervisión</h2>
+            <h2>Registro de la Ficha de Seguimiento y Monitoreo</h2>
             <form id="supervisionForm">
                 <fieldset class="full-width">
                     <legend>1. Buscar Contrato</legend>
@@ -128,8 +125,9 @@
                 </fieldset>
                 
                 <fieldset class="full-width" id="infoSupervision" style="display:none;">
-                    <legend>3. Llenar Datos de Supervisión</legend>
+                    <legend>3. Llenar Datos de Seguimiento y Monitoreo</legend>
                     <div class="grid-container">
+                        <div class="form-group full-width"><label for="fecha_monitoreo">Fecha de Monitoreo:</label><input type="date" id="fecha_monitoreo"></div>
                         <div class="form-group full-width"><label for="nombre_especialista">Nombre y Apellido del Especialista:</label><input type="text" id="nombre_especialista"></div>
                         <div class="form-group"><label for="numero_parcela">Número de Parcela de Corta (PC):</label><input type="text" id="numero_parcela"></div>
                         <div class="form-group"><label for="doc_presentado_ugffs">Doc. Presentado UGFFS:</label><input type="text" id="doc_presentado_ugffs"></div>
@@ -164,178 +162,175 @@
     </div>
 
     <script>
-    const loggedInUser = localStorage.getItem('username');
-    if (loggedInUser) {
-        document.getElementById('userInfo').textContent = `Bienvenido, ${loggedInUser}`;
-    } else {
-        window.location.href = '/'; 
-    }
-    
-    const mapa = L.map('mapa').setView([-5.8, -75.0], 6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(mapa);
-    
-    let poligonoContratoLayer = null;
-    
-    // --- LÓGICA DE EVENTOS ---
-
-    document.getElementById('logoutButton').addEventListener('click', async () => {
-        try {
-            const response = await fetch('/logout', { method: 'POST' });
-            const data = await response.json();
-            if (data.success) {
-                localStorage.removeItem('username'); 
-                window.location.href = '/'; 
-            } else {
-                alert('Error al cerrar sesión.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error de conexión al cerrar sesión.');
+        const loggedInUser = localStorage.getItem('username');
+        if (loggedInUser) {
+            document.getElementById('userInfo').textContent = `Bienvenido, ${loggedInUser}`;
+        } else {
+            window.location.href = '/'; 
         }
-    });
-
-    document.getElementById('downloadButton').addEventListener('click', () => {
-        const numContrato = document.getElementById('num_contrato_search').value;
-        if (!numContrato) {
-            alert('No hay un número de contrato para descargar.');
-            return;
-        }
-        const encodedContrato = encodeURIComponent(numContrato);
-        window.location.href = `/api/download/shapefile/${encodedContrato}`;
-    });
-
-    document.getElementById('supervisionForm').addEventListener('submit', async function(event) {
-        event.preventDefault();
         
-        // VALIDACIÓN DEL 40% DE LOS CAMPOS
-        const fieldsToValidate = [
-            'nombre_especialista', 'numero_parcela', 'doc_presentado_ugffs', 'nro_gtf',
-            'nro_list_troza', 'fech_tala_lo_th', 'resultado_analisis', 'doc_generado',
-            'observacion', 'link_reporte', 'link_gtf', 'remitido_osinfor',
-            'fecha_doc_enviado_a_osinfor', 'n_informe_osinfor', 'hallazgos_osinfor'
-        ];
-        const totalFields = fieldsToValidate.length;
-        let filledFields = 0;
-
-        fieldsToValidate.forEach(id => {
-            const field = document.getElementById(id);
-            if (field && field.value.trim() !== '') {
-                filledFields++;
+        const mapa = L.map('mapa').setView([-5.8, -75.0], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(mapa);
+        
+        let poligonoContratoLayer = null;
+        
+        document.getElementById('logoutButton').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.removeItem('username'); 
+                    window.location.href = '/'; 
+                } else {
+                    alert('Error al cerrar sesión.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión al cerrar sesión.');
             }
         });
 
-        const percentageFilled = (filledFields / totalFields) * 100;
-
-        if (percentageFilled < 40) {
-            alert(`Por favor, llene al menos el 40% de los campos de supervisión.\nHa llenado ${filledFields} de ${totalFields} campos.`);
-            return;
-        }
-
-        // PREGUNTA DE CONFIRMACIÓN
-        if (!confirm("¿Está seguro de que desea guardar esta supervisión?")) {
-            return;
-        }
-        
-        const statusMessage = document.getElementById('statusMessage');
-        const formData = {
-            num_contrato: document.getElementById('num_contrato_search').value,
-            nombre_especialista: document.getElementById('nombre_especialista').value,
-            numero_parcela: document.getElementById('numero_parcela').value,
-            doc_presentado_ugffs: document.getElementById('doc_presentado_ugffs').value,
-            nro_gtf: document.getElementById('nro_gtf').value,
-            nro_list_troza: document.getElementById('nro_list_troza').value,
-            fech_tala_lo_th: document.getElementById('fech_tala_lo_th').value || null,
-            resultado_analisis: document.getElementById('resultado_analisis').value,
-            doc_generado: document.getElementById('doc_generado').value,
-            observacion: document.getElementById('observacion').value,
-            link_reporte: document.getElementById('link_reporte').value,
-            link_gtf_gerforcloud: document.getElementById('link_gtf').value,
-            remitido_osinfor: document.getElementById('remitido_osinfor').value,
-            fecha_doc_enviado_a_osinfor: document.getElementById('fecha_doc_enviado_a_osinfor').value || null,
-            n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value,
-            hallazgos_osinfor: document.getElementById('hallazgos_osinfor').value
-        };
-
-        try {
-            statusMessage.textContent = 'Guardando...';
-            statusMessage.style.color = 'blue';
-            const response = await fetch('/api/supervision', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Error al guardar.');
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            const numContrato = document.getElementById('num_contrato_search').value;
+            if (!numContrato) {
+                alert('No hay un número de contrato para descargar.');
+                return;
             }
-            
-            const result = await response.json();
-            if (result.success) {
-                statusMessage.textContent = result.message;
-                statusMessage.style.color = 'green';
-                document.getElementById('supervisionForm').reset();
-                document.getElementById('infoContrato').style.display = 'none';
-                document.getElementById('infoSupervision').style.display = 'none';
-                document.getElementById('downloadContainer').style.display = 'none';
-                if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
-            }
-        } catch (error) {
-            console.error('Error al guardar:', error);
-            statusMessage.textContent = `Error: ${error.message}`;
-            statusMessage.style.color = 'red';
-        }
-    });
-
-    // --- FUNCIÓN DE BÚSQUEDA RESTAURADA ---
-    async function buscarContrato() {
-        const numContrato = document.getElementById('num_contrato_search').value;
-        const statusMessage = document.getElementById('statusMessage');
-        if (!numContrato) {
-            alert('Ingrese un número de contrato.');
-            return;
-        }
-
-        try {
-            statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
-            if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
-            document.getElementById('downloadContainer').style.display = 'none';
-            
             const encodedContrato = encodeURIComponent(numContrato);
-            const response = await fetch(`/api/contrato/${encodedContrato}`);
+            window.location.href = `/api/download/shapefile/${encodedContrato}`;
+        });
+
+        document.getElementById('supervisionForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
             
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Error en la búsqueda.');
+            // VALIDACIÓN DEL 40% DE LOS CAMPOS - CORREGIDA
+            const fieldsToValidate = [
+                'fecha_monitoreo', 'nombre_especialista', 'numero_parcela', 'doc_presentado_ugffs', 
+                'nro_gtf', 'nro_list_troza', 'fech_tala_lo_th', 'resultado_analisis', 
+                'doc_generado', 'observacion', 'link_reporte', 'link_gtf', 
+                'remitido_osinfor', 'fecha_doc_enviado_a_osinfor', 'n_informe_osinfor', 'hallazgos_osinfor'
+            ];
+            const totalFields = fieldsToValidate.length;
+            let filledFields = 0;
+
+            fieldsToValidate.forEach(id => {
+                const field = document.getElementById(id);
+                if (field && field.value.trim() !== '') {
+                    filledFields++;
+                }
+            });
+
+            const percentageFilled = (filledFields / totalFields) * 100;
+
+            if (percentageFilled < 40) {
+                alert(`Por favor, llene al menos el 40% de los campos de supervisión.\nHa llenado ${filledFields} de ${totalFields} campos.`);
+                return;
             }
 
-            const result = await response.json();
-            if (result.success) {
-                const contrato = result.data;
-                document.getElementById('titular').value = contrato.nomtit || '';
-                document.getElementById('modalidad').value = contrato.nomobj || '';
+            if (!confirm("¿Está seguro de que desea guardar esta supervisión?")) {
+                return;
+            }
+            
+            const statusMessage = document.getElementById('statusMessage');
+            const formData = {
+                num_contrato: document.getElementById('num_contrato_search').value,
+                fecha_monitoreo: document.getElementById('fecha_monitoreo').value || null, // <-- NUEVO
+                nombre_especialista: document.getElementById('nombre_especialista').value,
+                numero_parcela: document.getElementById('numero_parcela').value,
+                doc_presentado_ugffs: document.getElementById('doc_presentado_ugffs').value,
+                nro_gtf: document.getElementById('nro_gtf').value,
+                nro_list_troza: document.getElementById('nro_list_troza').value,
+                fech_tala_lo_th: document.getElementById('fech_tala_lo_th').value || null,
+                resultado_analisis: document.getElementById('resultado_analisis').value,
+                doc_generado: document.getElementById('doc_generado').value,
+                observacion: document.getElementById('observacion').value,
+                link_reporte: document.getElementById('link_reporte').value,
+                link_gtf_gerforcloud: document.getElementById('link_gtf').value,
+                remitido_osinfor: document.getElementById('remitido_osinfor').value,
+                fecha_doc_enviado_a_osinfor: document.getElementById('fecha_doc_enviado_a_osinfor').value || null,
+                n_informe_supervision_osinfor: document.getElementById('n_informe_osinfor').value,
+                hallazgos_osinfor: document.getElementById('hallazgos_osinfor').value
+            };
 
-                if (contrato.geojson) {
-                    poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
-                    mapa.fitBounds(poligonoContratoLayer.getBounds());
+            try {
+                statusMessage.textContent = 'Guardando...';
+                statusMessage.style.color = 'blue';
+                const response = await fetch('/api/supervision', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Error al guardar.');
                 }
                 
-                document.getElementById('infoContrato').style.display = 'block';
-                document.getElementById('infoSupervision').style.display = 'block';
-                document.getElementById('downloadContainer').style.display = 'block';
-                statusMessage.textContent = 'Contrato encontrado. Llene los datos.';
-                statusMessage.style.color = 'green';
+                const result = await response.json();
+                if (result.success) {
+                    statusMessage.textContent = result.message;
+                    statusMessage.style.color = 'green';
+                    document.getElementById('supervisionForm').reset();
+                    document.getElementById('infoContrato').style.display = 'none';
+                    document.getElementById('infoSupervision').style.display = 'none';
+                    document.getElementById('downloadContainer').style.display = 'none';
+                    if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
+                }
+            } catch (error) {
+                console.error('Error al guardar:', error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.style.color = 'red';
             }
-        } catch (error) {
-            console.error('Error en búsqueda:', error);
-            statusMessage.textContent = `Error: ${error.message}`;
-            statusMessage.style.color = 'red';
-            document.getElementById('infoContrato').style.display = 'none';
-            document.getElementById('infoSupervision').style.display = 'none';
+        });
+
+        async function buscarContrato() {
+            const numContrato = document.getElementById('num_contrato_search').value;
+            const statusMessage = document.getElementById('statusMessage');
+            if (!numContrato) {
+                alert('Ingrese un número de contrato.');
+                return;
+            }
+
+            try {
+                statusMessage.textContent = 'Buscando...'; statusMessage.style.color = 'blue';
+                if (poligonoContratoLayer) { mapa.removeLayer(poligonoContratoLayer); }
+                document.getElementById('downloadContainer').style.display = 'none';
+                
+                const encodedContrato = encodeURIComponent(numContrato);
+                const response = await fetch(`/api/contrato/${encodedContrato}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Error en la búsqueda.');
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    const contrato = result.data;
+                    document.getElementById('titular').value = contrato.nomtit || '';
+                    document.getElementById('modalidad').value = contrato.nomobj || '';
+
+                    if (contrato.geojson) {
+                        poligonoContratoLayer = L.geoJSON(contrato.geojson, { style: { color: "#ff0000", weight: 2, opacity: 1, fillOpacity: 0.3 } }).addTo(mapa);
+                        mapa.fitBounds(poligonoContratoLayer.getBounds());
+                    }
+                    
+                    document.getElementById('infoContrato').style.display = 'block';
+                    document.getElementById('infoSupervision').style.display = 'block';
+                    document.getElementById('downloadContainer').style.display = 'block';
+                    statusMessage.textContent = 'Contrato encontrado. Llene los datos.';
+                    statusMessage.style.color = 'green';
+                }
+            } catch (error) {
+                console.error('Error en búsqueda:', error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.style.color = 'red';
+                document.getElementById('infoContrato').style.display = 'none';
+                document.getElementById('infoSupervision').style.display = 'none';
+            }
         }
-    }
-</script>
+    </script>
 </body>
 </html>

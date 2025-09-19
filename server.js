@@ -108,10 +108,10 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA GUARDAR SUPERVISIÓN - PROTEGIDA
+// RUTA PARA GUARDAR SUPERVISIÓN - PROTEGIDA Y COMPLETA
 app.post('/api/supervision', checkAuth, async (req, res) => {
     const {
-        num_contrato, nombre_especialista, numero_parcela, doc_presentado_ugffs, nro_gtf,
+        num_contrato, fecha_monitoreo, nombre_especialista, numero_parcela, doc_presentado_ugffs, nro_gtf,
         nro_list_troza, fech_tala_lo_th, resultado_analisis, doc_generado, observacion,
         link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_doc_enviado_a_osinfor,
         n_informe_supervision_osinfor, hallazgos_osinfor
@@ -129,15 +129,15 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
                 num_contrato, nomtit, resapr, numero_parcela, doc_presentado_ugffs, nro_gtf,
                 nro_list_troza, fech_tala_lo_th, resultado_analisis, doc_generado, observacion,
                 link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_doc_enviado_a_osinfor,
-                n_informe_supervision_osinfor, hallazgos_osinfor, nombre_especialista, fuente
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                n_informe_supervision_osinfor, hallazgos_osinfor, nombre_especialista, fuente, fecha_monitoreo
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING id;
         `;
         const values = [
             num_contrato, nomtit, resapr, numero_parcela, doc_presentado_ugffs, nro_gtf,
             nro_list_troza, fech_tala_lo_th, resultado_analisis, doc_generado, observacion,
             link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_doc_enviado_a_osinfor,
-            n_informe_supervision_osinfor, hallazgos_osinfor, nombre_especialista, fuente
+            n_informe_supervision_osinfor, hallazgos_osinfor, nombre_especialista, fuente, fecha_monitoreo
         ];
         
         const result = await pool.query(insertQuery, values);
@@ -152,7 +152,6 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
 app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
     try {
-        // ▼▼▼ CAMBIO CLAVE AQUÍ ▼▼▼
         const query = `
             SELECT 
                 numcon, nomtit, resapr, nomobj, fuente, denomi,
@@ -165,13 +164,11 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
         if (result.rows.length === 0) {
             return res.status(404).send('Contrato no encontrado.');
         }
-
         const data = result.rows[0];
         
         if (!data.geojson) {
             return res.status(404).send('Error: El contrato no tiene una geometría para descargar.');
         }
-
         let geometry = JSON.parse(data.geojson);
 
         if (geometry.type === 'MultiPolygon' && geometry.coordinates.length === 1) {
@@ -200,18 +197,16 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
                         resoluc: data.resapr,
                         modalidad: data.nomobj,
                         fuente: data.fuente,
-                        denomi: data.denomi // Ahora sí se incluirá
+                        denomi: data.denomi
                     }
                 }
             ]
         };
 
         const shapefileBuffer = shpwrite.zip(geoJsonData, options);
-
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${num_contrato.replace(/[^a-zA-Z0-9_-]/g, '_')}.zip`);
         res.send(shapefileBuffer);
-
     } catch (error) {
         console.error('--- ERROR DETALLADO AL GENERAR SHAPEFILE ---');
         console.error(error); 
