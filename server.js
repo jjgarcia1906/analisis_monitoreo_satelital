@@ -88,20 +88,52 @@ app.get('/consulta', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, './public/consulta.html'));
 });
 
-// RUTA PARA BUSCAR UN CONTRATO - PROTEGIDA
+// RUTA PARA BUSCAR UN CONTRATO EN AMBAS TABLAS - PROTEGIDA
 app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
+    console.log(`Buscando contrato en ambas tablas: ${num_contrato}`);
+
     try {
-        const query = 'SELECT numcon, nomtit, resapr, nomobj, fuente, denomi, ST_AsGeoJSON(geom) as geojson FROM public.permisos_forestales WHERE numcon = $1';
-        const result = await pool.query(query, [num_contrato]);
+        // --- BÚSQUEDA EN LA PRIMERA TABLA: permisos_forestales ---
+        let queryPermisos = 'SELECT numcon, nomtit, resapr, nomobj, fuente, denomi, ST_AsGeoJSON(geom) as geojson FROM public.permisos_forestales WHERE numcon = $1';
+        let result = await pool.query(queryPermisos, [num_contrato]);
 
         if (result.rows.length > 0) {
+            console.log("Contrato encontrado en: permisos_forestales");
             const data = result.rows[0];
             if (data.geojson) { data.geojson = JSON.parse(data.geojson); }
-            res.json({ success: true, data: data });
-        } else {
-            res.status(404).json({ success: false, message: 'Contrato no encontrado.' });
+
+            // Devolvemos los datos con un campo "tipo" para saber de dónde vienen
+            return res.json({ success: true, data: { ...data, tipo_contrato: 'Permiso Forestal' } });
         }
+
+        // --- SI NO SE ENCUENTRA, BÚSQUEDA EN LA SEGUNDA TABLA: concesiones_forestales ---
+        console.log("No se encontró en permisos. Buscando en concesiones...");
+        let queryConcesiones = 'SELECT "CONTRATO_1", "TITULAR_1", "MODALIDAD", "ODP", "Superposic", ST_AsGeoJSON(geom) as geojson FROM public.concesiones_forestales WHERE "CONTRATO_1" = $1';
+        result = await pool.query(queryConcesiones, [num_contrato]);
+
+        if (result.rows.length > 0) {
+            console.log("Contrato encontrado en: concesiones_forestales");
+            const data = result.rows[0];
+            if (data.geojson) { data.geojson = JSON.parse(data.geojson); }
+
+            // "Normalizamos" los datos para que el frontend los entienda con nombres consistentes
+            const unifiedData = {
+                numcon: data.CONTRATO_1,
+                nomtit: data.TITULAR_1,
+                modalidad_concesion: data.MODALIDAD,
+                odp: data.ODP,
+                superposicion: data.Superposic,
+                geojson: data.geojson,
+                tipo_contrato: 'Concesión Forestal'
+            };
+
+            return res.json({ success: true, data: unifiedData });
+        }
+
+        // --- SI NO SE ENCUENTRA EN NINGUNA TABLA ---
+        res.status(404).json({ success: false, message: 'Contrato no encontrado en ninguna de las fuentes de datos.' });
+
     } catch (error) {
         console.error('Error al buscar el contrato:', error);
         res.status(500).json({ success: false, message: 'Error interno del servidor.' });

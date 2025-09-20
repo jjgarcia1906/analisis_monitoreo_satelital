@@ -222,14 +222,19 @@
                 if (result.success) {
                     const contrato = result.data;
                     
-                    const fieldMappings = {
-                        numcon: "Número de Contrato",
-                        nomtit: "Titular",
-                        resapr: "Resolución",
-                        nomobj: "Modalidad",
-                        fuente: "Fuente",
-                        denomi: "Denominación" // <-- NUEVA LÍNEA (puedes ponerle el título que prefieras)
-                    };
+                    // Mapeo de nombres técnicos a nombres legibles (con todos los campos posibles)
+const fieldMappings = {
+    tipo_contrato: "Tipo de Título",
+    numcon: "Número de Contrato",
+    nomtit: "Titular",
+    resapr: "Resolución",
+    nomobj: "Modalidad (Permiso)",
+    fuente: "Fuente",
+    denomi: "Denominación",
+    modalidad_concesion: "Modalidad (Concesión)",
+    odp: "ODP",
+    superposicion: "Superposición"
+};
 
                     for (const key in fieldMappings) {
                         if (contrato[key]) { 
