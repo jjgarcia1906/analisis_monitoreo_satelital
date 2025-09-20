@@ -95,15 +95,14 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
 
     try {
         // --- BÚSQUEDA EN LA PRIMERA TABLA: permisos_forestales ---
-        let queryPermisos = 'SELECT numcon, nomtit, resapr, nomobj, fuente, denomi, ST_AsGeoJSON(geom) as geojson FROM public.permisos_forestales WHERE numcon = $1';
+        let queryPermisos = 'SELECT numcon, nomtit, resapr, nomobj, fuente, denomi, ST_AsGeoJSON(ST_Transform(geom, 4326)) as geojson FROM public.permisos_forestales WHERE numcon = $1';
         let result = await pool.query(queryPermisos, [num_contrato]);
 
         if (result.rows.length > 0) {
             console.log("Contrato encontrado en: permisos_forestales");
             const data = result.rows[0];
             if (data.geojson) { data.geojson = JSON.parse(data.geojson); }
-
-            // Devolvemos los datos con un campo "tipo" para saber de dónde vienen
+            
             return res.json({ success: true, data: { ...data, tipo_contrato: 'Permiso Forestal' } });
         }
 
@@ -117,21 +116,19 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
             const data = result.rows[0];
             if (data.geojson) { data.geojson = JSON.parse(data.geojson); }
 
-            // "Normalizamos" los datos para que el frontend los entienda con nombres consistentes
             const unifiedData = {
-    numcon: data.contrato_1,
-    nomtit: data.titular_1,
-    modalidad_concesion: data.modalidad,
-    odp: data.odp,
-    superposicion: data.superposic,
-    geojson: data.geojson,
-    tipo_contrato: 'Concesión Forestal'
-};
-
+                numcon: data.contrato_1,
+                nomtit: data.titular_1,
+                modalidad_concesion: data.modalidad,
+                odp: data.odp,
+                superposicion: data.superposic,
+                geojson: data.geojson,
+                tipo_contrato: 'Concesión Forestal'
+            };
+            
             return res.json({ success: true, data: unifiedData });
         }
 
-        // --- SI NO SE ENCUENTRA EN NINGUNA TABLA ---
         res.status(404).json({ success: false, message: 'Contrato no encontrado en ninguna de las fuentes de datos.' });
 
     } catch (error) {
@@ -140,7 +137,7 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA GUARDAR SUPERVISIÓN - PROTEGIDA Y COMPLETA
+// RUTA PARA GUARDAR SUPERVISIÓN - PROTEGIDA
 app.post('/api/supervision', checkAuth, async (req, res) => {
     const {
         num_contrato, fecha_monitoreo, nombre_especialista, numero_parcela, doc_presentado_ugffs, nro_gtf,
@@ -180,17 +177,15 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - AHORA BUSCA EN AMBAS TABLAS
+// RUTA PARA DESCARGAR EL SHAPEFILE DE UN CONTRATO - PROTEGIDA
 app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => {
     const { num_contrato } = req.params;
-    console.log(`Petición de descarga para el contrato: ${num_contrato}`);
-
     try {
         let data;
         let query;
         let result;
 
-        // --- BÚSQUEDA EN LA PRIMERA TABLA: permisos_forestales ---
+        // Búsqueda en permisos_forestales
         query = `
             SELECT numcon, nomtit, resapr, nomobj, fuente, denomi, ST_AsGeoJSON(ST_Transform(geom, 4326)) as geojson 
             FROM public.permisos_forestales WHERE numcon = $1
@@ -198,16 +193,13 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
         result = await pool.query(query, [num_contrato]);
 
         if (result.rows.length > 0) {
-            console.log("Contrato encontrado en permisos_forestales para descarga.");
             data = result.rows[0];
-            // Normalizamos los datos para el shapefile
             data.num_contr = data.numcon;
             data.titular = data.nomtit;
             data.resoluc = data.resapr;
             data.modalidad = data.nomobj;
         } else {
-            // --- SI NO SE ENCUENTRA, BÚSQUEDA EN LA SEGUNDA TABLA: concesiones_forestales ---
-            console.log("No se encontró en permisos. Buscando en concesiones para descarga...");
+            // Búsqueda en concesiones_forestales
             query = `
                 SELECT "contrato_1", "titular_1", "modalidad", "odp", "superposic", ST_AsGeoJSON(ST_Transform(geom, 4326)) as geojson 
                 FROM public.concesiones_forestales WHERE "contrato_1" = $1
@@ -215,9 +207,7 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
             result = await pool.query(query, [num_contrato]);
 
             if (result.rows.length > 0) {
-                console.log("Contrato encontrado en concesiones_forestales para descarga.");
                 data = result.rows[0];
-                // Normalizamos los datos para el shapefile
                 data.num_contr = data.contrato_1;
                 data.titular = data.titular_1;
                 data.modalidad = data.modalidad;
@@ -226,16 +216,21 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
             }
         }
         
-        // --- Si después de buscar en ambas no se encuentra nada ---
         if (!data) {
-            return res.status(404).send('Contrato no encontrado en ninguna de las fuentes de datos.');
+            return res.status(404).send('Contrato no encontrado.');
         }
         
         if (!data.geojson) {
-            return res.status(404).send('Error: El contrato encontrado no tiene una geometría para descargar.');
+            return res.status(404).send('Error: El contrato no tiene una geometría para descargar.');
         }
 
         let geometry = JSON.parse(data.geojson);
+        if (geometry.type === 'MultiPolygon' && geometry.coordinates.length === 1) {
+            geometry = {
+                type: 'Polygon',
+                coordinates: geometry.coordinates[0]
+            };
+        }
 
         const options = {
             folder: 'poligono',
@@ -265,17 +260,16 @@ app.get('/api/download/shapefile/:num_contrato', checkAuth, async (req, res) => 
         };
 
         const shapefileBuffer = shpwrite.zip(geoJsonData, options);
-
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${data.num_contr.replace(/[^a-zA-Z0-9_-]/g, '_')}.zip`);
         res.send(shapefileBuffer);
-
     } catch (error) {
         console.error('--- ERROR DETALLADO AL GENERAR SHAPEFILE ---');
         console.error(error); 
         res.status(500).send('Error interno al generar el archivo.');
     }
 });
+
 
 // 6. INICIAR EL SERVIDOR
 app.listen(PORT, () => {
