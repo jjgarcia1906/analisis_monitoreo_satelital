@@ -157,7 +157,7 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
             contratoData = contratoResult.rows[0];
         } else {
             // Si no, busca en concesiones_forestales
-            contratoQuery = 'SELECT "TITULAR_1" as nomtit, NULL as resapr, "ODP" as fuente FROM public.concesiones_forestales WHERE "CONTRATO_1" = $1';
+            contratoQuery = 'SELECT "titular_1" as nomtit, NULL as resapr, "odp" as fuente FROM public.concesiones_forestales WHERE "contrato_1" = $1';
             contratoResult = await pool.query(contratoQuery, [num_contrato]);
             
             if (contratoResult.rows.length > 0) {
