@@ -109,7 +109,7 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
 
         // --- SI NO SE ENCUENTRA, BÚSQUEDA EN LA SEGUNDA TABLA: concesiones_forestales ---
         console.log("No se encontró en permisos. Buscando en concesiones...");
-        let queryConcesiones = 'SELECT "CONTRATO_1", "TITULAR_1", "MODALIDAD", "ODP", "Superposic", ST_AsGeoJSON(geom) as geojson FROM public.concesiones_forestales WHERE "CONTRATO_1" = $1';
+        let queryConcesiones = 'SELECT "contrato_1", "titular_1", "modalidad", "odp", "superposic", ST_AsGeoJSON(geom) as geojson FROM public.concesiones_forestales WHERE "contrato_1" = $1';
         result = await pool.query(queryConcesiones, [num_contrato]);
 
         if (result.rows.length > 0) {
@@ -119,14 +119,14 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
 
             // "Normalizamos" los datos para que el frontend los entienda con nombres consistentes
             const unifiedData = {
-                numcon: data.CONTRATO_1,
-                nomtit: data.TITULAR_1,
-                modalidad_concesion: data.MODALIDAD,
-                odp: data.ODP,
-                superposicion: data.Superposic,
-                geojson: data.geojson,
-                tipo_contrato: 'Concesión Forestal'
-            };
+    numcon: data.contrato_1,
+    nomtit: data.titular_1,
+    modalidad_concesion: data.modalidad,
+    odp: data.odp,
+    superposicion: data.superposic,
+    geojson: data.geojson,
+    tipo_contrato: 'Concesión Forestal'
+};
 
             return res.json({ success: true, data: unifiedData });
         }
