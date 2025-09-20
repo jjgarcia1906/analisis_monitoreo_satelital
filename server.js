@@ -137,7 +137,7 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
     }
 });
 
-// RUTA PARA GUARDAR SUPERVISIÓN - PROTEGIDA
+// RUTA PARA GUARDAR SUPERVISIÓN - AHORA BUSCA EN AMBAS TABLAS
 app.post('/api/supervision', checkAuth, async (req, res) => {
     const {
         num_contrato, fecha_monitoreo, nombre_especialista, numero_parcela, doc_presentado_ugffs, nro_gtf,
@@ -145,13 +145,31 @@ app.post('/api/supervision', checkAuth, async (req, res) => {
         link_reporte, link_gtf_gerforcloud, remitido_osinfor, fecha_doc_enviado_a_osinfor,
         n_informe_supervision_osinfor, hallazgos_osinfor
     } = req.body;
+
     try {
-        const contratoQuery = 'SELECT nomtit, resapr, fuente FROM public.permisos_forestales WHERE numcon = $1';
-        const contratoResult = await pool.query(contratoQuery, [num_contrato]);
-        if (contratoResult.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'El contrato base no fue encontrado.' });
+        let contratoData;
+
+        // Primero, busca en permisos_forestales
+        let contratoQuery = 'SELECT nomtit, resapr, fuente FROM public.permisos_forestales WHERE numcon = $1';
+        let contratoResult = await pool.query(contratoQuery, [num_contrato]);
+
+        if (contratoResult.rows.length > 0) {
+            contratoData = contratoResult.rows[0];
+        } else {
+            // Si no, busca en concesiones_forestales
+            contratoQuery = 'SELECT "TITULAR_1" as nomtit, NULL as resapr, "ODP" as fuente FROM public.concesiones_forestales WHERE "CONTRATO_1" = $1';
+            contratoResult = await pool.query(contratoQuery, [num_contrato]);
+            
+            if (contratoResult.rows.length > 0) {
+                contratoData = contratoResult.rows[0];
+            }
         }
-        const { nomtit, resapr, fuente } = contratoResult.rows[0];
+
+        if (!contratoData) {
+            return res.status(404).json({ success: false, message: 'El contrato base no fue encontrado en ninguna tabla.' });
+        }
+        
+        const { nomtit, resapr, fuente } = contratoData;
 
         const insertQuery = `
             INSERT INTO public.monitoreo_satel (
