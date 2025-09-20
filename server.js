@@ -109,7 +109,7 @@ app.get('/api/contrato/:num_contrato', checkAuth, async (req, res) => {
 
         // --- SI NO SE ENCUENTRA, BÚSQUEDA EN LA SEGUNDA TABLA: concesiones_forestales ---
         console.log("No se encontró en permisos. Buscando en concesiones...");
-        let queryConcesiones = 'SELECT "contrato_1", "titular_1", "modalidad", "odp", "superposic", ST_AsGeoJSON(geom) as geojson FROM public.concesiones_forestales WHERE "contrato_1" = $1';
+        let queryConcesiones = 'SELECT "contrato_1", "titular_1", "modalidad", "odp", "superposic", ST_AsGeoJSON(ST_Transform(geom, 4326)) as geojson FROM public.concesiones_forestales WHERE "contrato_1" = $1';
         result = await pool.query(queryConcesiones, [num_contrato]);
 
         if (result.rows.length > 0) {
